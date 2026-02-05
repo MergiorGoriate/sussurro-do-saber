@@ -1,0 +1,37 @@
+name: Deploy to Hetzner VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # Navigate to project directory (change this to your actual path)
+            cd /root/apps/sussurros-do-saber || git clone https://github.com/${{ github.repository }} /root/apps/sussurros-do-saber && cd /root/apps/sussurros-do-saber
+            
+            # Pull latest changes
+            git pull origin main
+            
+            # Create/Update .env file for backend if needed (optional, or rely on existing file)
+            # echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" > backend/.env
+            # echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> backend/.env
+
+            # Export secrets for docker-compose
+            export SECRET_KEY=${{ secrets.SECRET_KEY }}
+            export GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+
+            # Build and Run
+            docker-compose up -d --build --remove-orphans

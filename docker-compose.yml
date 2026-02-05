@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: sussurros_backend
+    restart: always
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DATABASE_URL=sqlite:///instance/sussurros.db
+    volumes:
+      - ./backend/instance:/app/instance
+    networks:
+      - app-network
+
+  frontend:
+    build: .
+    container_name: sussurros_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

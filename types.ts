@@ -150,3 +150,17 @@ export interface EducationalResource {
   fileSize: string;
   downloadUrl: string;
 }
+
+export type FootnoteType = 'correction' | 'supplementary_link' | 'insight';
+export type FootnoteStatus = 'pending' | 'approved' | 'rejected';
+
+export interface Footnote {
+  id: string;
+  articleId: string;
+  author: string;
+  content: string;
+  type: FootnoteType;
+  status: FootnoteStatus;
+  date: string;
+  referenceText?: string; // Text fragment the footnote refers to
+}

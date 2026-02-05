@@ -1,5 +1,5 @@
 
-import { Article } from "../types";
+import { Article, Footnote } from "../types";
 
 const API_BASE_URL = 'http://127.0.0.1:5000/api';
 
@@ -11,7 +11,7 @@ export const apiService = {
     const params = new URLSearchParams();
     if (query) params.append('q', query);
     if (category) params.append('category', category);
-    
+
     const response = await fetch(`${API_BASE_URL}/articles?${params.toString()}`);
     if (!response.ok) throw new Error('Failed to fetch articles');
     return response.json();
@@ -57,14 +57,14 @@ export const apiService = {
   },
 
   async getRandomScienceFact(): Promise<string> {
-     const facts = [
-       "O conhecimento acadêmico triplica a cada década nas ciências naturais.",
-       "A luz do Sol demora 8 minutos para chegar à Terra.",
-       "O DNA de todos os humanos no planeta caberia em uma colher de chá.",
-       "Existem mais estrelas no universo do que grãos de areia na Terra.",
-       "O cérebro humano produz eletricidade suficiente para acender uma pequena lâmpada LED."
-     ];
-     return facts[Math.floor(Math.random() * facts.length)];
+    const facts = [
+      "O conhecimento acadêmico triplica a cada década nas ciências naturais.",
+      "A luz do Sol demora 8 minutos para chegar à Terra.",
+      "O DNA de todos os humanos no planeta caberia em uma colher de chá.",
+      "Existem mais estrelas no universo do que grãos de areia na Terra.",
+      "O cérebro humano produz eletricidade suficiente para acender uma pequena lâmpada LED."
+    ];
+    return facts[Math.floor(Math.random() * facts.length)];
   },
 
   async getAiInsight(content: string): Promise<string> {
@@ -75,5 +75,35 @@ export const apiService = {
     });
     const data = await response.json();
     return data.insight;
+  },
+
+  async getArticleFootnotes(articleId: string): Promise<Footnote[]> {
+    const response = await fetch(`${API_BASE_URL}/articles/${articleId}/footnotes`);
+    if (!response.ok) return [];
+    return response.json();
+  },
+
+  async submitFootnoteSuggestion(articleId: string, footnote: Partial<Footnote>): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/articles/${articleId}/footnotes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(footnote)
+    });
+    if (!response.ok) throw new Error('Failed to submit suggestion');
+  },
+
+  async getGlossaryTerms(content: string): Promise<{ term: string; definition: string }[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/ai/glossary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.error("Glossary fetch error:", error);
+      return [];
+    }
   }
 };

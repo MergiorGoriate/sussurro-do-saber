@@ -8,12 +8,12 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { storageService } from '../services/storageService';
-import { Article, Comment, BlogUser, Category, CommentStatus, BlogSettings } from '../types';
+import { Article, Comment, BlogUser, Category, CommentStatus, BlogSettings, Footnote, FootnoteStatus } from '../types';
 import ArticleEditor from '../components/ArticleEditor';
 
 const Admin: React.FC = () => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'articles' | 'comments' | 'subscribers' | 'settings' | 'profile'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'articles' | 'comments' | 'footnotes' | 'subscribers' | 'settings' | 'profile'>('dashboard');
     const [user, setUser] = useState<BlogUser | null>(null);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [email, setEmail] = useState('');
@@ -29,6 +29,8 @@ const Admin: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [commentFilter, setCommentFilter] = useState<'all' | 'pending' | 'approved' | 'spam'>('all');
+    const [footnotes, setFootnotes] = useState<Footnote[]>([]);
+    const [footnoteFilter, setFootnoteFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
     // Article Modal states
     const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
@@ -59,18 +61,20 @@ const Admin: React.FC = () => {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [allArticles, allComments, allSubscribers, currentSettings, usersList] = await Promise.all([
+            const [allArticles, allComments, allSubscribers, currentSettings, usersList, allFootnotes] = await Promise.all([
                 storageService.getArticles(),
                 storageService.getComments(),
                 storageService.getSubscribers(),
                 storageService.getSettings(),
-                storageService.getUsers()
+                storageService.getUsers(),
+                storageService.getAllFootnotes()
             ]);
             setArticles(allArticles);
             setComments(allComments);
             setSubscribers(allSubscribers);
             setSettings(currentSettings);
             setAllUsers(usersList);
+            setFootnotes(allFootnotes);
         } catch (err) {
             console.error('Error loading admin data:', err);
         } finally {
@@ -165,6 +169,25 @@ const Admin: React.FC = () => {
         loadData();
     };
 
+    const handleUpdateFootnoteStatus = async (id: string, status: FootnoteStatus) => {
+        try {
+            await storageService.updateFootnoteStatus(id, status);
+            loadData();
+        } catch (err) {
+            console.error('Error updating footnote:', err);
+        }
+    };
+
+    const handleDeleteFootnote = async (id: string) => {
+        if (!window.confirm('Deseja eliminar definitivamente esta nota?')) return;
+        try {
+            await storageService.deleteFootnote(id);
+            loadData();
+        } catch (err) {
+            console.error('Error deleting footnote:', err);
+        }
+    };
+
     if (!isLoggedIn) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-6">
@@ -249,6 +272,7 @@ const Admin: React.FC = () => {
                         { id: 'articles', icon: FileText, label: 'Manuscritos' },
                         { id: 'comments', icon: MessageSquare, label: 'Debates & Críticas' },
                         { id: 'subscribers', icon: Mail, label: 'Audiência' },
+                        { id: 'footnotes', icon: FileText, label: 'Notas Colaborativas' },
                         { id: 'settings', icon: Settings, label: 'Parâmetros' },
                         { id: 'profile', icon: Shield, label: 'Meu Perfil' },
                     ].map(item => (
@@ -289,6 +313,7 @@ const Admin: React.FC = () => {
                             {activeTab === 'articles' && 'Curadoria de Manuscritos'}
                             {activeTab === 'comments' && 'Moderação de Críticas'}
                             {activeTab === 'subscribers' && 'Gestão de Audiência'}
+                            {activeTab === 'footnotes' && 'Moderação de Notas'}
                             {activeTab === 'settings' && 'Definições do Sistema'}
                             {activeTab === 'profile' && 'Gestão de Identidade'}
                         </h1>
@@ -576,6 +601,74 @@ const Admin: React.FC = () => {
                             {comments.length === 0 && (
                                 <div className="text-center py-20 bg-slate-50 dark:bg-slate-800/50 rounded-[32px] border-2 border-dashed border-slate-100 dark:border-slate-800">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic leading-relaxed">Nenhuma participação ou reflexão registada.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* FOOTNOTES TAB */}
+                {!isLoading && activeTab === 'footnotes' && (
+                    <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden text-slate-900 dark:text-white">
+                        <div className="p-8 border-b border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-6">
+                                {['all', 'pending', 'approved', 'rejected'].map(st => (
+                                    <button
+                                        key={st}
+                                        onClick={() => setFootnoteFilter(st as any)}
+                                        className={`text-[10px] font-black uppercase tracking-widest pb-4 border-b-2 transition-all ${footnoteFilter === st ? 'text-brand-blue border-brand-blue' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                                    >
+                                        {st === 'all' ? 'Todas' : st === 'pending' ? 'Pendentes' : st === 'approved' ? 'Aprovadas' : 'Rejeitadas'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            {footnotes
+                                .filter(f => footnoteFilter === 'all' || f.status === footnoteFilter)
+                                .map(f => (
+                                    <div key={f.id} className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[24px] border border-slate-100 dark:border-slate-800 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-md">
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 font-bold uppercase text-xs">
+                                                    {f.author.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-xs font-black uppercase mb-0.5">{f.author}</h4>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Tipo: {f.type} | {new Date(f.date).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {f.status !== 'approved' && (
+                                                    <button onClick={() => handleUpdateFootnoteStatus(f.id, 'approved')} className="p-2 text-green-500 hover:bg-green-100 rounded-lg" title="Aprovar"><Check size={16} /></button>
+                                                )}
+                                                {f.status !== 'rejected' && (
+                                                    <button onClick={() => handleUpdateFootnoteStatus(f.id, 'rejected')} className="p-2 text-amber-500 hover:bg-amber-100 rounded-lg" title="Rejeitar"><X size={16} /></button>
+                                                )}
+                                                <button onClick={() => handleDeleteFootnote(f.id)} className="p-2 text-red-500 hover:bg-red-100 rounded-lg" title="Excluir"><Trash2 size={16} /></button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {f.referenceText && (
+                                                <div className="text-[10px] bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-100 dark:border-slate-800 border-l-4 border-brand-blue italic text-slate-400">
+                                                    Ref: "{f.referenceText}"
+                                                </div>
+                                            )}
+                                            <p className="text-sm font-serif italic text-slate-600 dark:text-slate-300 leading-relaxed bg-white dark:bg-slate-900/40 p-4 rounded-xl">
+                                                "{f.content}"
+                                            </p>
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                ID Manuscrito: {f.articleId}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+
+                            {footnotes.length === 0 && (
+                                <div className="text-center py-20 italic text-slate-400 font-bold uppercase text-[10px] tracking-widest leading-relaxed">
+                                    Nenhuma nota de rodapé registada.
                                 </div>
                             )}
                         </div>

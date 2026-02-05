@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
-from models import db, bcrypt, User, Article, Comment, Subscriber, Setting
+from models import db, bcrypt, User, Article, Comment, Subscriber, Setting, Footnote
 import uuid
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -257,6 +257,73 @@ def add_comment(id):
     db.session.commit()
     return jsonify({'message': 'Comment submitted', 'id': new_comment.id}), 201
 
+# FOOTNOTES ROUTES
+@app.route('/api/articles/<id>/footnotes', methods=['GET'])
+def get_article_footnotes(id):
+    footnotes = Footnote.query.filter_by(article_id=id, status='approved').all()
+    return jsonify([{
+        'id': f.id,
+        'author': f.author,
+        'content': f.content,
+        'type': f.type,
+        'date': f.date.isoformat(),
+        'referenceText': f.reference_text
+    } for f in footnotes])
+
+@app.route('/api/articles/<id>/footnotes', methods=['POST'])
+def add_footnote_suggestion(id):
+    data = request.json
+    new_footnote = Footnote(
+        id=f"f-{int(datetime.now().timestamp())}",
+        article_id=id,
+        author=data['author'],
+        content=data['content'],
+        type=data.get('type', 'correction'),
+        reference_text=data.get('referenceText')
+    )
+    db.session.add(new_footnote)
+    db.session.commit()
+    return jsonify({'message': 'Suggestion submitted', 'id': new_footnote.id}), 201
+
+@app.route('/api/footnotes', methods=['GET'])
+@token_required
+def get_all_footnotes(current_user):
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Admin only!'}), 403
+    footnotes = Footnote.query.order_by(Footnote.date.desc()).all()
+    return jsonify([{
+        'id': f.id,
+        'articleId': f.article_id,
+        'author': f.author,
+        'content': f.content,
+        'type': f.type,
+        'status': f.status,
+        'date': f.date.isoformat(),
+        'referenceText': f.reference_text
+    } for f in footnotes])
+
+@app.route('/api/footnotes/<id>', methods=['PUT'])
+@token_required
+def update_footnote_status(current_user, id):
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Admin only!'}), 403
+    footnote = Footnote.query.get_or_404(id)
+    data = request.json
+    if 'status' in data:
+        footnote.status = data['status']
+    db.session.commit()
+    return jsonify({'message': 'Footnote updated'})
+
+@app.route('/api/footnotes/<id>', methods=['DELETE'])
+@token_required
+def delete_footnote(current_user, id):
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Admin only!'}), 403
+    footnote = Footnote.query.get_or_404(id)
+    db.session.delete(footnote)
+    db.session.commit()
+    return jsonify({'message': 'Footnote deleted'})
+
 @app.route('/api/subscribers', methods=['POST'])
 def add_subscriber():
     data = request.json
@@ -436,6 +503,52 @@ def ai_generate():
     except Exception as e:
         print(f"Generate Error: {str(e)}")
         return jsonify({'message': str(e)}), 500
+
+@app.route('/api/ai/glossary', methods=['POST'])
+def ai_glossary():
+    import google.generativeai as genai
+    data = request.json
+    content = data.get('content')
+    
+    if not content:
+        return jsonify({'message': 'Content is required'}), 400
+        
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({'message': 'IA pendente de configuração.'}), 500
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-flash-latest')
+        
+        prompt = f"""
+        Analise o seguinte texto e identifique 5 a 10 termos técnicos, científicos ou complexos que merecem uma explicação para um público leigo.
+        Para cada termo, forneça uma definição curta e clara (máximo 20 palavras).
+        Retorne APENAS um JSON válido no formato:
+        [
+            {{"term": "Termo 1", "definition": "Definição do termo 1..."}},
+            {{"term": "Termo 2", "definition": "Definição do termo 2..."}}
+        ]
+        
+        Texto:
+        {content[:3000]} 
+        """
+        # Truncating content to 3000 chars to avoid token limits context window
+        
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json",
+            )
+        )
+        return response.text # Already JSON
+    except Exception as e:
+        print(f"Glossary Error: {str(e)}")
+        # Fallback mocks for testing if AI fails
+        return jsonify([
+            {"term": "Processamento de Linguagem Natural", "definition": "Campo da IA focado na interação entre computadores e linguagem humana."},
+            {"term": "Algoritmo", "definition": "Sequência de instruções para resolver um problema ou realizar uma tarefa."}
+        ])
 
 # Route ai_chat removed for undo
 

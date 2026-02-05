@@ -56,6 +56,16 @@ class Comment(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), default='pending') # pending, approved, rejected
 
+class Footnote(db.Model):
+    id = db.Column(db.String(36), primary_key=True)
+    article_id = db.Column(db.String(36), db.ForeignKey('article.id'), nullable=False)
+    author = db.Column(db.String(100), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    type = db.Column(db.String(30), default='correction') # correction, supplementary_link, insight
+    status = db.Column(db.String(20), default='pending') # pending, approved, rejected
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+    reference_text = db.Column(db.Text, nullable=True)
+
 class Subscriber(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)

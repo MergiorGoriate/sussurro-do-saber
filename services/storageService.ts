@@ -1,5 +1,5 @@
 
-import { Article, Category, Comment, BlogSettings, BlogUser, MediaItem, ActivityLog, CommentStatus } from '../types';
+import { Article, Category, Comment, BlogSettings, BlogUser, MediaItem, ActivityLog, CommentStatus, Footnote, FootnoteStatus } from '../types';
 import { apiService } from './apiService';
 
 const STORAGE_KEYS = {
@@ -278,6 +278,46 @@ class JournalBackend {
 
   public async getMedia(): Promise<MediaItem[]> {
     return []; // Para implementar se houver upload real
+  }
+
+  // FOOTNOTES
+  public async getArticleFootnotes(articleId: string): Promise<Footnote[]> {
+    return apiService.getArticleFootnotes(articleId);
+  }
+
+  public async submitFootnoteSuggestion(articleId: string, author: string, content: string, type: any, referenceText?: string) {
+    return apiService.submitFootnoteSuggestion(articleId, { author, content, type, referenceText });
+  }
+
+  public async getAllFootnotes(): Promise<Footnote[]> {
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH);
+    const response = await fetch(`http://127.0.0.1:5000/api/footnotes`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) return [];
+    return response.json();
+  }
+
+  public async updateFootnoteStatus(id: string, status: FootnoteStatus) {
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH);
+    const response = await fetch(`http://127.0.0.1:5000/api/footnotes/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ status })
+    });
+    if (!response.ok) throw new Error('Failed to update footnote');
+  }
+
+  public async deleteFootnote(id: string) {
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH);
+    const response = await fetch(`http://127.0.0.1:5000/api/footnotes/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to delete footnote');
   }
 }
 

@@ -7,9 +7,10 @@ import {
   ArrowLeft, Calendar, User, Clock, Share2,
   Bookmark, Heart, ArrowUp, ListTodo, Loader2,
   Check, Hash, ChevronRight, X, MessageSquare, Send,
-  Copy, MessageCircle, Facebook, Twitter, Linkedin
+  Copy, MessageCircle, Facebook, Twitter, Linkedin,
+  FileText, PlusCircle, ExternalLink, AlertCircle, Sparkles
 } from 'lucide-react';
-import { Article, Comment } from '../types';
+import { Article, Comment, Footnote, FootnoteType } from '../types';
 import SimpleMarkdown from '../components/SimpleMarkdown';
 
 const ArticleView: React.FC = () => {
@@ -27,6 +28,20 @@ const ArticleView: React.FC = () => {
   const [isToCOpen, setIsToCOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
+
+  // Notas de Rodapé
+  const [footnotes, setFootnotes] = useState<Footnote[]>([]);
+  const [isFootnoteModalOpen, setIsFootnoteModalOpen] = useState(false);
+  const [footnoteType, setFootnoteType] = useState<FootnoteType>('correction');
+  const [footnoteContent, setFootnoteContent] = useState('');
+  const [footnoteRefText, setFootnoteRefText] = useState('');
+  const [isSubmittingFootnote, setIsSubmittingFootnote] = useState(false);
+  const [footnoteFeedback, setFootnoteFeedback] = useState(false);
+
+  // Glossário Interativo
+  const [glossaryTerms, setGlossaryTerms] = useState<{ term: string; definition: string }[]>([]);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState(false);
+  const [isGlossaryActive, setIsGlossaryActive] = useState(false);
 
   // Form de comentários
   const [commentName, setCommentName] = useState('');
@@ -105,6 +120,9 @@ const ArticleView: React.FC = () => {
         const artComments = await storageService.getArticleComments(id);
         setComments(artComments);
 
+        const artFootnotes = await storageService.getArticleFootnotes(id);
+        setFootnotes(artFootnotes);
+
         const interactions = storageService.getUserInteractions();
         setIsLiked(interactions.likedArticles.includes(id));
         setIsBookmarked(interactions.bookmarkedArticles.includes(id));
@@ -150,6 +168,46 @@ const ArticleView: React.FC = () => {
       setComments(articleComments);
     } finally {
       setIsSubmittingComment(false);
+    }
+  };
+
+  const handleFootnoteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !footnoteContent.trim()) return;
+    setIsSubmittingFootnote(true);
+    try {
+      await storageService.submitFootnoteSuggestion(
+        id,
+        commentName || 'Leitor Anónimo',
+        footnoteContent,
+        footnoteType,
+        footnoteRefText
+      );
+      setFootnoteContent('');
+      setFootnoteRefText('');
+      setFootnoteFeedback(true);
+      setTimeout(() => {
+        setFootnoteFeedback(false);
+        setIsFootnoteModalOpen(false);
+      }, 3000);
+    } catch (err) {
+      console.error('Erro ao sugerir nota:', err);
+    } finally {
+      setIsSubmittingFootnote(false);
+    }
+  };
+
+  const handleActivateGlossary = async () => {
+    if (!article?.content || isGlossaryActive) return;
+    setIsGlossaryLoading(true);
+    try {
+      const terms = await apiService.getGlossaryTerms(article.content);
+      setGlossaryTerms(terms);
+      setIsGlossaryActive(true);
+    } catch (error) {
+      console.error("Failed to load glossary:", error);
+    } finally {
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -218,8 +276,55 @@ const ArticleView: React.FC = () => {
               <div className="hidden md:block ml-auto font-mono text-[10px] opacity-40">DOI: 10.3390/ss{article.id}</div>
             </div>
 
-            <div className="prose prose-slate dark:prose-invert max-w-none">
-              <SimpleMarkdown content={article.content} />
+            <div className={`prose prose-slate dark:prose-invert max-w-none ${isGlossaryActive ? 'glossary-active' : ''}`}>
+              <SimpleMarkdown content={article.content} glossaryTerms={glossaryTerms} />
+            </div>
+
+            <div className="mt-6 mb-8 flex justify-end">
+              {!isGlossaryActive ? (
+                <button
+                  onClick={handleActivateGlossary}
+                  disabled={isGlossaryLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-brand-blue dark:text-blue-300 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all"
+                >
+                  {isGlossaryLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  Ativar Glossário AI
+                </button>
+              ) : (
+                <span className="flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                  <Check size={14} /> Glossário Ativo
+                </span>
+              )}
+            </div>
+
+            {footnotes.length > 0 && (
+              <div className="mt-12 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-l-4 border-brand-blue">
+                <h4 className="text-[10px] font-black text-brand-blue uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <FileText size={14} /> Notas de Rodapé Colaborativas
+                </h4>
+                <div className="space-y-4">
+                  {footnotes.map((fn, idx) => (
+                    <div key={fn.id} className="text-sm">
+                      <span className="font-bold text-brand-blue mr-2">[{idx + 1}]</span>
+                      <span className="text-slate-600 dark:text-slate-300 font-serif leading-relaxed italic">
+                        {fn.content}
+                      </span>
+                      {fn.referenceText && (
+                        <p className="text-[10px] text-slate-400 mt-1">Ref: "{fn.referenceText}"</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={() => setIsFootnoteModalOpen(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-brand-blue hover:border-brand-blue transition-all shadow-sm"
+              >
+                <PlusCircle size={14} /> Sugerir Correção ou Nota
+              </button>
             </div>
 
             <div className="mt-16 pt-8 border-t border-slate-100 dark:border-slate-800">
@@ -468,6 +573,89 @@ const ArticleView: React.FC = () => {
             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/30 text-center">
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">
                 "O saber só é pleno quando partilhado."
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Footnote Modal */}
+      {isFootnoteModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={() => setIsFootnoteModalOpen(false)}></div>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[32px] shadow-2xl relative z-10 overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95">
+            <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+              <h3 className="font-black text-brand-blue dark:text-blue-400 uppercase tracking-tight text-xs flex items-center gap-2">
+                <PlusCircle size={16} /> Debate Académico: Sugerir Nota
+              </h3>
+              <button onClick={() => setIsFootnoteModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors" title="Fechar modal"><X size={20} /></button>
+            </div>
+
+            <div className="p-8">
+              {footnoteFeedback ? (
+                <div className="text-center py-10 animate-in zoom-in">
+                  <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Check size={32} />
+                  </div>
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white mb-2">Sugestão Enviada!</h4>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 font-serif lowercase italic">Sua contribuição será analisada pela equipa editorial e aparecerá no manuscrito após aprovação.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleFootnoteSubmit} className="space-y-6">
+                  <div className="space-y-4">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipo de Contribuição</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {(['correction', 'supplementary_link', 'insight'] as FootnoteType[]).map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setFootnoteType(t)}
+                          className={`px-3 py-3 rounded-xl border text-[9px] font-black uppercase tracking-tighter transition-all ${footnoteType === t ? 'bg-brand-blue text-white border-brand-blue shadow-lg shadow-blue-500/20' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-400 hover:border-brand-blue'}`}
+                          title={`Selecionar tipo: ${t}`}
+                        >
+                          {t === 'correction' ? 'Correção' : t === 'supplementary_link' ? 'Link Extra' : 'Insight'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Trecho de Referência (Opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: No segundo parágrafo sobre..."
+                      value={footnoteRefText}
+                      onChange={e => setFootnoteRefText(e.target.value)}
+                      className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all text-sm font-serif"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Conteúdo da Nota</label>
+                    <textarea
+                      required
+                      placeholder="Descreva a sua sugestão ou forneça o link complementar..."
+                      value={footnoteContent}
+                      onChange={e => setFootnoteContent(e.target.value)}
+                      className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all h-32 resize-none text-sm font-serif"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingFootnote}
+                    className="w-full flex items-center justify-center gap-2.5 py-4 bg-brand-blue text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-dark transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                  >
+                    {isSubmittingFootnote ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    Submeter para Revisão
+                  </button>
+                </form>
+              )}
+            </div>
+
+            <div className="px-8 py-4 bg-slate-50 dark:bg-slate-800/30 text-center border-t border-slate-100 dark:border-slate-800">
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                <AlertCircle size={12} /> Apenas contribuições académicas serão aceites
               </p>
             </div>
           </div>
