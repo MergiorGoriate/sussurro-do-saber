@@ -34,6 +34,7 @@ class Article(db.Model):
     likes = db.Column(db.Integer, default=0)
     views = db.Column(db.Integer, default=0)
     tags = db.Column(db.Text, nullable=True) # JSON-encoded string
+    semantic_metadata = db.Column(db.Text, nullable=True) # AI-generated index data
     
     # Metrics
     citations = db.Column(db.Integer, default=0)

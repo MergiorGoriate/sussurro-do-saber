@@ -6,6 +6,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from models import db, bcrypt, User, Article, Comment, Subscriber, Setting, Footnote
 import uuid
+from werkzeug.utils import secure_filename
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
@@ -21,9 +22,17 @@ CORS(app, resources={r"/api/*": {"origins": "*"}}) # In production, replace * wi
 db.init_app(app)
 bcrypt.init_app(app)
 
-# Create tables
+# Create tables and directories
 with app.app_context():
     db.create_all()
+    if not os.path.exists(os.path.join(basedir, 'uploads')):
+        os.makedirs(os.path.join(basedir, 'uploads'))
+
+# Serve uploaded files
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    from flask import send_from_directory
+    return send_from_directory(os.path.join(basedir, 'uploads'), filename)
 
 # Middleware for JWT
 def token_required(f):
@@ -102,7 +111,16 @@ def get_articles():
         articles_query = articles_query.filter(Article.title.contains(query) | Article.excerpt.contains(query))
         
     articles = articles_query.order_by(Article.date.desc()).all()
-    
+
+    def safe_json_load(data):
+        if not data:
+            return None
+        try:
+            return json.loads(data)
+        except Exception as e:
+            print(f"Error parsing semantic_metadata: {e}")
+            return None
+
     # Helper to get author avatar
     def get_author_avatar(author_name):
         user = User.query.filter_by(name=author_name).first()
@@ -122,19 +140,12 @@ def get_articles():
         'likes': a.likes,
         'views': a.views,
         'tags': a.tags.split(',') if a.tags else [],
+        'semanticMetadata': safe_json_load(a.semantic_metadata),
         'metrics': {
             'citations': a.citations,
             'altmetricScore': a.altmetric_score,
             'viewCount': a.views,
             'downloadCount': a.download_count
-        },
-        'journalMeta': {
-            'doi': a.doi,
-            'issn': a.issn,
-            'volume': a.volume,
-            'issue': a.issue,
-            'receivedDate': a.received_date,
-            'acceptedDate': a.accepted_date
         }
     } for a in articles])
 
@@ -162,19 +173,12 @@ def get_article(id):
         'likes': article.likes,
         'views': article.views,
         'tags': article.tags.split(',') if article.tags else [],
+        'semanticMetadata': json.loads(article.semantic_metadata) if article.semantic_metadata else None,
         'metrics': {
             'citations': article.citations,
             'altmetricScore': article.altmetric_score,
             'viewCount': article.views,
             'downloadCount': article.download_count
-        },
-        'journalMeta': {
-            'doi': article.doi,
-            'issn': article.issn,
-            'volume': article.volume,
-            'issue': article.issue,
-            'receivedDate': article.received_date,
-            'acceptedDate': article.accepted_date
         }
     })
 
@@ -224,8 +228,97 @@ def update_or_delete_article(current_user, id):
     if 'tags' in data:
         article.tags = ",".join(data['tags'])
     
+    article.semantic_metadata = data.get('semanticMetadata', article.semantic_metadata)
+    
     db.session.commit()
     return jsonify({'message': 'Article updated'})
+
+@app.route('/api/ai/index_article/<id>', methods=['POST'])
+@token_required
+def index_article(current_user, id):
+    import google.generativeai as genai
+    import json
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Admin only!'}), 403
+    
+    article = Article.query.get_or_404(id)
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({'message': 'Gemini API Key not configured'}), 500
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""
+        Como um Indexador Académico de alto nível, analise o seguinte manuscrito:
+        Título: {article.title}
+        Conteúdo: {article.content[:4000]}
+        
+        Gere uma ficha de indexação semântica em formato JSON estrictamente com:
+        - key_concepts: (array) 5-7 conceitos técnicos/científicos centrais.
+        - technical_summary: (string) Resumo denso e formal para motores de busca científicos.
+        - interdisciplinary_links: (array) Outras áreas do saber relacionadas.
+        - academic_rigor_score: (1-10) quão técnico é o texto.
+        
+        Retorne APENAS o JSON.
+        """
+        
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json",
+            )
+        )
+        metadata = response.text
+        article.semantic_metadata = metadata
+        db.session.commit()
+        
+        return jsonify(json.loads(metadata))
+    except Exception as e:
+        print(f"Indexing Error: {str(e)}")
+        return jsonify({'message': 'Index generation failed', 'error': str(e)}), 500
+
+@app.route('/api/ai/indexer', methods=['GET'])
+def get_indexer_insights():
+    import google.generativeai as genai
+    import json
+    articles = Article.query.filter(Article.semantic_metadata.isnot(None)).all()
+    if not articles:
+        return jsonify({'message': 'No indexed articles found'}), 404
+    
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({'message': 'IA pendente de configuração.'}), 500
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        corpus = "\n".join([f"Artigo: {a.title} | Conceitos: {json.loads(a.semanticMetadata).get('key_concepts', []) if a.semanticMetadata else ''}" for a in articles])
+        
+        prompt = f"""
+        Analise o corpus bibliográfico atual do Sussurros do Saber:
+        {corpus}
+        
+        Forneça um panorama geral (Insights do Indexador) em JSON com:
+        - trending_topics: (array) Tópicos emergentes na biblioteca.
+        - disciplinary_map: (array de objetos) {{field: str, count: int}}
+        - general_summary: (string) Visão geral do conhecimento acumulado.
+        
+        Retorne APENAS o JSON.
+        """
+        
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json",
+            )
+        )
+        return response.text
+    except Exception as e:
+        print(f"Indexer Error: {str(e)}")
+        return jsonify({'message': 'Indexer analysis failed'}), 500
 
 @app.route('/api/articles/<id>/like', methods=['POST'])
 def like_article(id):
@@ -269,6 +362,64 @@ def get_article_footnotes(id):
         'date': f.date.isoformat(),
         'referenceText': f.reference_text
     } for f in footnotes])
+
+@app.route('/api/articles/<id>/recommendations', methods=['GET'])
+def get_article_recommendations(id):
+    import google.generativeai as genai
+    import json
+    current_article = Article.query.get_or_404(id)
+    all_articles = Article.query.filter(Article.id != id).all()
+    
+    if not all_articles:
+        return jsonify([])
+        
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify([])
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-flash-latest')
+        
+        candidates = "\n".join([f"ID: {a.id} | Titulo: {a.title} | Resumo: {a.excerpt or ''}" for a in all_articles])
+        
+        prompt = f"""
+        Você é um curador de conteúdo académico. 
+        Analise a relação conceptual entre este artigo:
+        Título: {current_article.title}
+        Resumo: {current_article.excerpt or ''}
+
+        E esta lista de candidatos:
+        {candidates}
+
+        Escolha os 3 artigos mais relevantes semanticamente.
+        Retorne APENAS um array JSON com os IDs. Ex: ["id1", "id2", "id3"]
+        """
+        
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json",
+            )
+        )
+        recommended_ids = json.loads(response.text)
+        
+        recommended_articles = []
+        for rid in recommended_ids:
+            art = Article.query.get(rid)
+            if art:
+                recommended_articles.append({
+                    'id': art.id,
+                    'title': art.title,
+                    'excerpt': art.excerpt,
+                    'category': art.category,
+                    'imageUrl': art.image_url
+                })
+        
+        return jsonify(recommended_articles[:3])
+    except Exception as e:
+        print(f"Recommendations Error: {str(e)}")
+        return jsonify([])
 
 @app.route('/api/articles/<id>/footnotes', methods=['POST'])
 def add_footnote_suggestion(id):
@@ -504,6 +655,39 @@ def ai_generate():
         print(f"Generate Error: {str(e)}")
         return jsonify({'message': str(e)}), 500
 
+@app.route('/api/ai/summary', methods=['POST'])
+def ai_summary():
+    import google.generativeai as genai
+    data = request.json
+    content = data.get('content')
+    
+    if not content:
+        return jsonify({'message': 'Content is required'}), 400
+        
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({'message': 'IA pendente de configuração.'}), 500
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-flash-latest')
+        
+        prompt = f"""
+        Você é um editor sénior do jornal académico "Sussurros do Saber".
+        Leia o manuscrito abaixo e crie um sumário executivo de alto nível.
+        O sumário deve consistir em 3 pontos fundamentais (bullet points), totalizando no máximo 80 palavras.
+        Seja rigoroso, académico mas fascinante.
+        
+        Texto:
+        {content[:4000]}
+        """
+        
+        response = model.generate_content(prompt)
+        return jsonify({'summary': response.text})
+    except Exception as e:
+        print(f"Summary Error: {str(e)}")
+        return jsonify({'message': 'Não foi possível gerar o sumário.'}), 500
+
 @app.route('/api/ai/glossary', methods=['POST'])
 def ai_glossary():
     import google.generativeai as genai
@@ -522,16 +706,21 @@ def ai_glossary():
         model = genai.GenerativeModel('gemini-flash-latest')
         
         prompt = f"""
-        Analise o seguinte texto e identifique 5 a 10 termos técnicos, científicos ou complexos que merecem uma explicação para um público leigo.
-        Para cada termo, forneça uma definição curta e clara (máximo 20 palavras).
-        Retorne APENAS um JSON válido no formato:
+        Como editor académico do Sussurros do Saber, analise o texto abaixo.
+        Identifique 5 a 8 termos técnicos, científicos ou conceitos complexos que necessitam de clarificação para um leitor culto mas não especialista.
+        REGRAS CRÍTICAS:
+        1. Ignore termos extremamente comuns (ex: Ciência, Tecnologia, Computador).
+        2. Foque-se em conceitos específicos (ex: Entropia, Neuroplasticidade, Paradigma de Kuhn).
+        3. A definição deve ter entre 10 e 20 palavras, num tom formal e enciclopédico.
+        4. Retorne APENAS o JSON conforme o exemplo.
+        
+        Exemplo:
         [
-            {{"term": "Termo 1", "definition": "Definição do termo 1..."}},
-            {{"term": "Termo 2", "definition": "Definição do termo 2..."}}
+            {{"term": "Entropia", "definition": "Medida da desordem ou aleatoriedade de um sistema físico, fundamental no segundo princípio da termodinâmica."}}
         ]
         
         Texto:
-        {content[:3000]} 
+        {content[:3000]}
         """
         # Truncating content to 3000 chars to avoid token limits context window
         
@@ -551,6 +740,49 @@ def ai_glossary():
         ])
 
 # Route ai_chat removed for undo
+
+@app.route('/api/categories', methods=['GET'])
+def get_categories():
+    categories = db.session.query(Article.category).distinct().all()
+    return jsonify([c[0] for c in categories])
+
+@app.route('/api/tags', methods=['GET'])
+def get_tags():
+    all_tags_raw = db.session.query(Article.tags).all()
+    unique_tags = set()
+    for row in all_tags_raw:
+        if row[0]:
+            tags = [t.strip() for t in row[0].split(',') if t.strip()]
+            unique_tags.update(tags)
+    return jsonify(list(unique_tags))
+
+@app.route('/api/upload', methods=['POST'])
+@token_required
+def upload_file(current_user):
+    if current_user.role != 'admin':
+        return jsonify({'message': 'Admin only!'}), 403
+    
+    if 'file' not in request.files:
+        return jsonify({'message': 'No file part'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'message': 'No selected file'}), 400
+    
+    if file:
+        filename = f"{int(datetime.now().timestamp())}_{secure_filename(file.filename)}"
+        file_path = os.path.join(basedir, 'uploads', filename)
+        file.save(file_path)
+        
+        # Determine the protocol based on the request (or hardcode https if preferred)
+        protocol = "https" if request.is_secure or os.getenv('PROD') == 'true' else "http"
+        host = request.host
+        
+        return jsonify({
+            'message': 'File uploaded successfully',
+            'url': f"{protocol}://{host}/uploads/{filename}",
+            'filename': filename
+        }), 201
 
 @app.route('/api/ai/chat', methods=['POST'])
 def ai_chat():
@@ -580,6 +812,58 @@ def ai_chat():
     except Exception as e:
         print(f"Chat Error: {str(e)}")
         return jsonify({'message': 'Ocorreu um erro no processamento AI. Tente novamente.'}), 500
+
+@app.route('/sitemap.xml', methods=['GET'])
+def sitemap():
+    try:
+        pages = []
+        # Hardcoded static pages
+        base_url = "https://sussurrosdosaber.com"
+        now = datetime.now().strftime('%Y-%m-%d')
+        
+        pages.append({
+            'loc': base_url + "/",
+            'lastmod': now,
+            'changefreq': 'daily',
+            'priority': '1.0'
+        })
+        
+        pages.append({
+            'loc': base_url + "/terms",
+            'lastmod': now,
+            'changefreq': 'monthly',
+            'priority': '0.3'
+        })
+
+        # Dynamic article pages
+        articles = Article.query.all()
+        for article in articles:
+            # Assuming article IDs translate to /article/<id>
+            # If the frontend route is different, adjust accordingly.
+            pages.append({
+                'loc': f"{base_url}/article/{article.id}",
+                'lastmod': article.date, # Ideally this would be a real ISO date
+                'changefreq': 'weekly',
+                'priority': '0.7'
+            })
+
+        xml_sitemap = '<?xml version="1.0" encoding="UTF-8"?>'
+        xml_sitemap += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        
+        for page in pages:
+            xml_sitemap += '<url>'
+            xml_sitemap += f'<loc>{page["loc"]}</loc>'
+            xml_sitemap += f'<lastmod>{page["lastmod"]}</lastmod>'
+            xml_sitemap += f'<changefreq>{page["changefreq"]}</changefreq>'
+            xml_sitemap += f'<priority>{page["priority"]}</priority>'
+            xml_sitemap += '</url>'
+            
+        xml_sitemap += '</urlset>'
+        
+        return xml_sitemap, 200, {'Content-Type': 'application/xml'}
+    except Exception as e:
+        print(f"Sitemap error: {e}")
+        return str(e), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -43,6 +43,10 @@ const ArticleView: React.FC = () => {
   const [isGlossaryLoading, setIsGlossaryLoading] = useState(false);
   const [isGlossaryActive, setIsGlossaryActive] = useState(false);
 
+  // Sumário AI
+  const [aiSummary, setAiSummary] = useState<string>('');
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+
   // Form de comentários
   const [commentName, setCommentName] = useState('');
   const [commentText, setCommentText] = useState('');
@@ -113,8 +117,7 @@ const ArticleView: React.FC = () => {
       if (fetchedArticle) {
         setArticle(fetchedArticle);
 
-        const allArticles = await storageService.getArticles();
-        const recs = await apiService.getRecommendedArticles(fetchedArticle, allArticles);
+        const recs = await apiService.getRecommendedArticles(id);
         setRecommendations(recs);
 
         const artComments = await storageService.getArticleComments(id);
@@ -126,6 +129,15 @@ const ArticleView: React.FC = () => {
         const interactions = storageService.getUserInteractions();
         setIsLiked(interactions.likedArticles.includes(id));
         setIsBookmarked(interactions.bookmarkedArticles.includes(id));
+
+        // Gerar Sumário AI automaticamente
+        if (fetchedArticle.content) {
+          setIsSummaryLoading(true);
+          apiService.getArticleSummary(fetchedArticle.content).then(summary => {
+            setAiSummary(summary);
+            setIsSummaryLoading(false);
+          });
+        }
       }
       setIsLoading(false);
     };
@@ -275,6 +287,28 @@ const ArticleView: React.FC = () => {
               <div className="flex items-center gap-2.5"><Clock size={14} /> {article.readTime} min read</div>
               <div className="hidden md:block ml-auto font-mono text-[10px] opacity-40">DOI: 10.3390/ss{article.id}</div>
             </div>
+
+            {/* AI SUMMARY SECTION */}
+            {(isSummaryLoading || aiSummary) && (
+              <div className="mb-10 p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800/50 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="text-brand-blue dark:text-blue-400" size={16} />
+                  <span className="text-[10px] font-black text-brand-blue dark:text-blue-400 uppercase tracking-widest">Resumo Executivo AI</span>
+                  {isSummaryLoading && <Loader2 className="animate-spin text-brand-blue ml-auto" size={12} />}
+                </div>
+                {isSummaryLoading ? (
+                  <div className="space-y-2">
+                    <div className="h-3 bg-blue-100 dark:bg-blue-800/30 rounded-full w-3/4 animate-pulse"></div>
+                    <div className="h-3 bg-blue-100 dark:bg-blue-800/30 rounded-full w-full animate-pulse"></div>
+                    <div className="h-3 bg-blue-100 dark:bg-blue-800/30 rounded-full w-5/6 animate-pulse"></div>
+                  </div>
+                ) : (
+                  <div className="text-sm font-serif italic text-slate-700 dark:text-slate-300 leading-relaxed custom-markdown-summary">
+                    <SimpleMarkdown content={aiSummary} />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className={`prose prose-slate dark:prose-invert max-w-none ${isGlossaryActive ? 'glossary-active' : ''}`}>
               <SimpleMarkdown content={article.content} glossaryTerms={glossaryTerms} />

@@ -23,7 +23,7 @@ const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfUse = lazy(() => import('./pages/TermsOfUse'));
 const AIResearch = lazy(() => import('./pages/AIResearch'));
 const Admin = lazy(() => import('./pages/Admin'));
-const RSSFeed = lazy(() => import('./pages/RSSFeed'));
+const RSSFeed = lazy(() => import('./pages/RSSFeed.tsx'));
 
 const ScrollToTop = () => {
   const { pathname, search } = useLocation();
@@ -67,7 +67,7 @@ const App: React.FC = () => {
               <Admin />
             </Suspense>
           } />
-          
+
           <Route path="*" element={
             <>
               <Navbar theme={theme} onToggleTheme={toggleTheme} />

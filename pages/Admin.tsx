@@ -4,7 +4,7 @@ import {
     BarChart3, FileText, MessageSquare, Users, Settings,
     LogOut, Plus, Search, Edit2, Trash2, Check, X,
     ArrowLeft, LayoutDashboard, Globe, Shield,
-    Bell, Mail, Eye, Heart, Download, Loader2, Send
+    Bell, Mail, Eye, Heart, Download, Loader2, Send, Brain
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { storageService } from '../services/storageService';
@@ -31,6 +31,10 @@ const Admin: React.FC = () => {
     const [commentFilter, setCommentFilter] = useState<'all' | 'pending' | 'approved' | 'spam'>('all');
     const [footnotes, setFootnotes] = useState<Footnote[]>([]);
     const [footnoteFilter, setFootnoteFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+
+    // Taxonomy suggestions
+    const [suggestedCategories, setSuggestedCategories] = useState<string[]>([]);
+    const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
 
     // Article Modal states
     const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
@@ -61,13 +65,24 @@ const Admin: React.FC = () => {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [allArticles, allComments, allSubscribers, currentSettings, usersList, allFootnotes] = await Promise.all([
+            const [
+                allArticles,
+                allComments,
+                allSubscribers,
+                currentSettings,
+                usersList,
+                allFootnotes,
+                cats,
+                tgs
+            ] = await Promise.all([
                 storageService.getArticles(),
                 storageService.getComments(),
                 storageService.getSubscribers(),
                 storageService.getSettings(),
                 storageService.getUsers(),
-                storageService.getAllFootnotes()
+                storageService.getAllFootnotes(),
+                storageService.getCategories(),
+                storageService.getTags()
             ]);
             setArticles(allArticles);
             setComments(allComments);
@@ -75,8 +90,33 @@ const Admin: React.FC = () => {
             setSettings(currentSettings);
             setAllUsers(usersList);
             setFootnotes(allFootnotes);
+            setSuggestedCategories(cats);
+            setSuggestedTags(tgs);
         } catch (err) {
             console.error('Error loading admin data:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const token = localStorage.getItem('sussurros_auth_token');
+        if (!token) {
+            alert('Sessão expirada. Autentique-se novamente.');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const { url } = await storageService.uploadImage(file, token);
+            setEditingArticle(prev => ({ ...prev, imageUrl: url }));
+            alert('Imagem carregada com sucesso!');
+        } catch (err) {
+            console.error('Upload error:', err);
+            alert('Erro ao carregar imagem.');
         } finally {
             setIsLoading(false);
         }
@@ -185,6 +225,22 @@ const Admin: React.FC = () => {
             loadData();
         } catch (err) {
             console.error('Error deleting footnote:', err);
+        }
+    };
+
+    const handleIndexArticle = async (id: string) => {
+        const token = localStorage.getItem('sussurros_auth_token');
+        if (!token) return;
+        try {
+            setIsLoading(true);
+            await storageService.indexArticle(id, token);
+            alert('Indexação semântica concluída com sucesso!');
+            loadData();
+        } catch (error) {
+            console.error('Indexing error:', error);
+            alert('Falha na indexação do manuscrito.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -504,6 +560,13 @@ const Admin: React.FC = () => {
                                             <td className="px-8 py-6 text-right whitespace-nowrap">
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
+                                                        onClick={() => handleIndexArticle(art.id)}
+                                                        title="Indexar com IA (Deep Scan)"
+                                                        className="p-2.5 bg-white dark:bg-slate-800 text-indigo-500 hover:text-white hover:bg-indigo-500 rounded-xl border border-slate-100 dark:border-slate-700 transition-all shadow-sm"
+                                                    >
+                                                        <Brain size={16} />
+                                                    </button>
+                                                    <button
                                                         onClick={() => { setEditingArticle(art); setIsArticleModalOpen(true); }}
                                                         title="Editar manuscrito"
                                                         className="p-2.5 bg-white dark:bg-slate-800 text-blue-500 hover:text-white hover:bg-blue-500 rounded-xl border border-slate-100 dark:border-slate-700 transition-all shadow-sm"
@@ -684,12 +747,14 @@ const Admin: React.FC = () => {
                                     <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Lista de Escuta</h3>
                                     <p className="text-xs text-slate-500 font-medium">Audiência inscrita na Newsletter Sussurros.</p>
                                 </div>
-                                <button title="Exportar dados dos subscritores" className="flex items-center gap-2 px-5 py-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl font-black text-[10px] uppercase tracking-widest border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all">
-                                    <Download size={14} /> Exportar CSV
-                                </button>
+                                <div className="flex gap-4">
+                                    <button title="Exportar dados dos subscritores" className="flex items-center gap-2 px-5 py-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl font-black text-[10px] uppercase tracking-widest border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all">
+                                        <Download size={14} /> Exportar CSV
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
                                 {subscribers.map((email, i) => (
                                     <div key={i} className="flex items-center gap-4 p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 group transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:scale-[1.02]">
                                         <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-xl flex items-center justify-center shrink-0">
@@ -697,10 +762,33 @@ const Admin: React.FC = () => {
                                         </div>
                                         <div className="min-w-0">
                                             <p className="text-xs font-black text-slate-900 dark:text-white truncate">{email}</p>
-                                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">Membro Activo desde 2024</p>
+                                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">Membro Activo</p>
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+
+                            <div className="pt-10 border-t border-slate-100 dark:border-slate-800">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Enviar Comunicado Geral (Broadcast)</h4>
+                                <div className="space-y-4 max-w-xl">
+                                    <input
+                                        type="text"
+                                        placeholder="Assunto da Newsletter..."
+                                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all font-bold text-sm"
+                                        title="Assunto da newsletter"
+                                    />
+                                    <textarea
+                                        placeholder="Escreva a sua mensagem para todos os subscritores..."
+                                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all h-32 resize-none font-medium leading-relaxed"
+                                        title="Corpo da mensagem"
+                                    ></textarea>
+                                    <button
+                                        onClick={() => alert('Funcionalidade de envio em massa preparada. Configure o servidor SMTP para activar o envio real.')}
+                                        className="flex items-center gap-2 px-8 py-4 bg-brand-blue text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-dark transition-all shadow-lg shadow-blue-500/20"
+                                    >
+                                        <Send size={16} /> Disparar Newsletter
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -903,7 +991,7 @@ const Admin: React.FC = () => {
                                             id="articleTitle"
                                             type="text"
                                             value={editingArticle?.title || ''}
-                                            onChange={e => setEditingArticle({ ...editingArticle, title: e.target.value })}
+                                            onChange={e => setEditingArticle(prev => ({ ...prev, title: e.target.value }))}
                                             placeholder="Ex: A influência da..."
                                             title="Insira o título do manuscrito"
                                             className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all font-bold text-base"
@@ -915,13 +1003,16 @@ const Admin: React.FC = () => {
                                         <select
                                             id="articleCategory"
                                             value={editingArticle?.category || ''}
-                                            onChange={e => setEditingArticle({ ...editingArticle, category: e.target.value as Category })}
+                                            onChange={e => setEditingArticle(prev => ({ ...prev, category: e.target.value as Category }))}
                                             title="Seleccione a categoria científica"
                                             className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all font-bold text-base appearance-none"
                                             required
                                         >
                                             <option value="">Seleccione...</option>
                                             {Object.values(Category).map(cat => (
+                                                <option key={cat} value={cat}>{cat}</option>
+                                            ))}
+                                            {suggestedCategories.filter(c => !Object.values(Category).includes(c as any)).map(cat => (
                                                 <option key={cat} value={cat}>{cat}</option>
                                             ))}
                                         </select>
@@ -933,7 +1024,7 @@ const Admin: React.FC = () => {
                                     <textarea
                                         id="articleExcerpt"
                                         value={editingArticle?.excerpt || ''}
-                                        onChange={e => setEditingArticle({ ...editingArticle, excerpt: e.target.value })}
+                                        onChange={e => setEditingArticle(prev => ({ ...prev, excerpt: e.target.value }))}
                                         placeholder="Resumo curto para visualização rápida..."
                                         title="Insira o resumo teórico"
                                         className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all h-24 resize-none font-medium leading-relaxed"
@@ -944,22 +1035,28 @@ const Admin: React.FC = () => {
                                     <label htmlFor="articleContent" className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-blue-600">Conteúdo Integral (Markdown Suportado)</label>
                                     <ArticleEditor
                                         initialContent={editingArticle?.content || ''}
-                                        onChange={(content: string) => setEditingArticle({ ...editingArticle, content })}
+                                        onChange={(content: string) => setEditingArticle(prev => ({ ...prev, content }))}
                                     />
                                 </div>
 
                                 <div className="grid md:grid-cols-2 gap-8">
                                     <div className="space-y-3">
                                         <label htmlFor="articleImageUrl" className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-blue-600">URL da Imagem de Capa</label>
-                                        <input
-                                            id="articleImageUrl"
-                                            type="text"
-                                            value={editingArticle?.imageUrl || ''}
-                                            onChange={e => setEditingArticle({ ...editingArticle, imageUrl: e.target.value })}
-                                            placeholder="https://images.unsplash.com/..."
-                                            title="Insira a URL da imagem de capa"
-                                            className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all font-bold text-sm"
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                id="articleImageUrl"
+                                                type="text"
+                                                value={editingArticle?.imageUrl || ''}
+                                                onChange={e => setEditingArticle(prev => ({ ...prev, imageUrl: e.target.value }))}
+                                                placeholder="https://exemplo.com/foto.jpg ou Upload..."
+                                                title="Insira a URL da imagem de capa"
+                                                className="flex-1 px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all font-bold text-sm"
+                                            />
+                                            <label className="p-4 bg-brand-blue text-white rounded-2xl cursor-pointer hover:bg-brand-dark transition-all flex items-center justify-center shadow-lg shadow-blue-500/10" title="Fazer upload de imagem">
+                                                <Plus size={20} />
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} title="Seleccionar ficheiro de imagem" />
+                                            </label>
+                                        </div>
                                     </div>
                                     <div className="space-y-3">
                                         <label htmlFor="articleReadTime" className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-blue-600">Tempo de Leitura (Minutos)</label>
@@ -967,7 +1064,7 @@ const Admin: React.FC = () => {
                                             id="articleReadTime"
                                             type="number"
                                             value={editingArticle?.readTime || 0}
-                                            onChange={e => setEditingArticle({ ...editingArticle, readTime: parseInt(e.target.value) })}
+                                            onChange={e => setEditingArticle(prev => ({ ...prev, readTime: parseInt(e.target.value) }))}
                                             placeholder="Ex: 5"
                                             title="Insira o tempo de leitura em minutos"
                                             className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all font-bold text-sm"
@@ -980,12 +1077,18 @@ const Admin: React.FC = () => {
                                     <input
                                         id="articleTags"
                                         type="text"
+                                        list="tags-list"
                                         value={editingArticle?.tags?.join(', ') || ''}
-                                        onChange={e => setEditingArticle({ ...editingArticle, tags: e.target.value.split(',').map(t => t.trim()).filter(t => t) })}
+                                        onChange={e => setEditingArticle(prev => ({ ...prev, tags: e.target.value.split(',').map(t => t.trim()).filter(t => t) }))}
                                         placeholder="Ex: ciência, astronomia, nasa"
                                         title="Insira as tags separadas por vírgula"
                                         className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-white transition-all font-bold text-sm"
                                     />
+                                    <datalist id="tags-list">
+                                        {suggestedTags.map(tag => (
+                                            <option key={tag} value={tag} />
+                                        ))}
+                                    </datalist>
                                 </div>
 
                             </form>

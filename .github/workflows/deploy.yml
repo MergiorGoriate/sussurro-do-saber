@@ -4,9 +4,28 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and Typecheck
+        run: npm run build
+
   deploy:
+    needs: build-and-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -21,23 +40,19 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
           envs: SECRET_KEY,GEMINI_API_KEY
           script: |
-            # Navigate to project directory
-            TARGET_DIR="/home/mergior/apps/sussurros-do-saber"
-            
-            if [ ! -d "$TARGET_DIR" ]; then
-              git clone https://github.com/${{ github.repository }} "$TARGET_DIR"
-            fi
-            
-            cd "$TARGET_DIR"
-            
-            # Pull latest changes
+            TARGET_DIR="/home/mergior/apps/sussurro-do-saber"
+            cd "$TARGET_DIR" || exit
+
+            # Update source
             git pull origin main
-            
-            # Export secrets for docker-compose (passed via envs)
-            export SECRET_KEY=$SECRET_KEY
-            export GEMINI_API_KEY=$GEMINI_API_KEY
-            
-            # Build and Run
+
+            # Update secrets in .env
+            echo "SECRET_KEY=$SECRET_KEY" > backend/.env
+            echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> backend/.env
+            echo "DATABASE_URL=sqlite:///instance/sussurros.db" >> backend/.env
+
+            # Rebuild and restart
             docker-compose up -d --build --remove-orphans

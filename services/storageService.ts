@@ -319,6 +319,22 @@ class JournalBackend {
     });
     if (!response.ok) throw new Error('Failed to delete footnote');
   }
+
+  public async uploadImage(file: File, token: string) {
+    return apiService.uploadImage(file, token);
+  }
+
+  public async getCategories() {
+    return apiService.getCategories();
+  }
+
+  public async getTags() {
+    return apiService.getTags();
+  }
+
+  public async indexArticle(id: string, token: string) {
+    return apiService.indexArticle(id, token);
+  }
 }
 
 export const storageService = new JournalBackend();

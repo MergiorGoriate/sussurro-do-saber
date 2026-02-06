@@ -36,24 +36,17 @@ export const apiService = {
   },
 
   /**
-   * Recomenda artigos com base na categoria.
+   * Recomenda artigos com base na semântica (IA).
    */
-  async getRecommendedArticles(currentArticle: Article, allArticles: Article[]): Promise<Article[]> {
-    // Por agora mantemos a lógica local para rapidez, ou podemos buscar do servidor
-    return allArticles
-      .filter(a => a.id !== currentArticle.id)
-      .map(article => {
-        let score = 0;
-        if (article.category === currentArticle.category) score += 5;
-        if (article.tags && currentArticle.tags) {
-          const commonTags = article.tags.filter(tag => currentArticle.tags?.includes(tag));
-          score += commonTags.length * 2;
-        }
-        return { article, score };
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
-      .map(item => item.article);
+  async getRecommendedArticles(articleId: string): Promise<Article[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/articles/${articleId}/recommendations`);
+      if (!response.ok) return [];
+      return response.json();
+    } catch (error) {
+      console.error("Recommendations error:", error);
+      return [];
+    }
   },
 
   async getRandomScienceFact(): Promise<string> {
@@ -92,6 +85,22 @@ export const apiService = {
     if (!response.ok) throw new Error('Failed to submit suggestion');
   },
 
+  async getArticleSummary(content: string): Promise<string> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/ai/summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+      if (!response.ok) return '';
+      const data = await response.json();
+      return data.summary;
+    } catch (error) {
+      console.error("Summary fetch error:", error);
+      return '';
+    }
+  },
+
   async getGlossaryTerms(content: string): Promise<{ term: string; definition: string }[]> {
     try {
       const response = await fetch(`${API_BASE_URL}/ai/glossary`, {
@@ -101,9 +110,55 @@ export const apiService = {
       });
       if (!response.ok) return [];
       return await response.json();
+      if (!response.ok) return [];
+      return await response.json();
     } catch (error) {
       console.error("Glossary fetch error:", error);
       return [];
     }
+  },
+
+  async getCategories(): Promise<string[]> {
+    const response = await fetch(`${API_BASE_URL}/categories`);
+    if (!response.ok) return [];
+    return response.json();
+  },
+
+  async getTags(): Promise<string[]> {
+    const response = await fetch(`${API_BASE_URL}/tags`);
+    if (!response.ok) return [];
+    return response.json();
+  },
+
+  async uploadImage(file: File, token: string): Promise<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    if (!response.ok) throw new Error('Failed to upload image');
+    return response.json();
+  },
+
+  async indexArticle(articleId: string, token: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/ai/index_article/${articleId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (!response.ok) throw new Error('Failed to index article');
+    return response.json();
+  },
+
+  async getIndexerInsights(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/ai/indexer`);
+    if (!response.ok) throw new Error('Failed to fetch indexer insights');
+    return response.json();
   }
 };
