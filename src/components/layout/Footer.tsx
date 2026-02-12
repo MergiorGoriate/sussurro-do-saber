@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 /* Importing Link from react-router-dom to fix missing exported member error */
 import { Link } from 'react-router-dom';
-import { storageService } from '../services/storageService';
-import { BlogSettings } from '../types';
+import { storageService } from '../../services/storageService';
+import { BlogSettings } from '../../types';
 import { Brain, Facebook, Twitter, Instagram, Youtube, Linkedin, Loader2 } from 'lucide-react';
 
 const Footer: React.FC = () => {

@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-basedir = os.path.abspath(os.path.dirname(__file__))
+basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 db_path = os.path.join(basedir, 'instance', 'sussurros.db')
 
 if not os.path.exists(db_path):

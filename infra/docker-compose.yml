@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    build: ./backend
+    build: ../backend
     container_name: sussurros_backend
     restart: always
     environment:
@@ -10,13 +10,15 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DATABASE_URL=sqlite:///instance/sussurros.db
     volumes:
-      - ./backend/instance:/app/instance
-      - ./backend/uploads:/app/uploads
+      - ../backend/instance:/app/instance
+      - ../backend/uploads:/app/uploads
     networks:
       - app-network
 
   frontend:
-    build: .
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.frontend
     container_name: sussurros_frontend
     restart: always
     ports:

@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, ChevronDown, Menu, X, Brain, Book, Home, Mail, HelpCircle, ArrowRight, Lightbulb, Loader2, Bookmark, Sun, Moon, FileDown } from 'lucide-react';
-import { storageService } from '../services/storageService';
-import { Article } from '../types';
+import { storageService } from '../../services/storageService';
+import { Article } from '../../types';
 
 interface NavbarProps {
   theme?: 'light' | 'dark';
@@ -13,7 +13,7 @@ interface NavbarProps {
 const SuggestionItem: React.FC<{ article: Article; onClick: () => void }> = ({ article, onClick }) => {
   const [imgError, setImgError] = useState(false);
   const fallbackImage = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=40&w=800&auto=format&fit=crop";
-  const thumbnailImage = article.imageUrl.includes('unsplash.com') 
+  const thumbnailImage = article.imageUrl.includes('unsplash.com')
     ? article.imageUrl.replace(/w=\d+/, 'w=100').replace(/q=\d+/, 'q=40')
     : article.imageUrl;
 
@@ -39,7 +39,7 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [logoError, setLogoError] = useState(false);
-  
+
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
@@ -56,10 +56,10 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => { 
-    setShowSuggestions(false); 
-    setIsOpen(false); 
-    setIsMobileSearchOpen(false); 
+  useEffect(() => {
+    setShowSuggestions(false);
+    setIsOpen(false);
+    setIsMobileSearchOpen(false);
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -76,7 +76,7 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
       setShowSuggestions(true);
       try {
         const allArticles = await storageService.getArticles();
-        const filtered = allArticles.filter(article => 
+        const filtered = allArticles.filter(article =>
           article.title.toLowerCase().includes(term.toLowerCase()) ||
           article.category.toLowerCase().includes(term.toLowerCase())
         ).slice(0, 5);
@@ -121,13 +121,13 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
             {isSearching && <Loader2 className="w-3 h-3 animate-spin" />}
           </h3>
           {!isSearching && suggestions.length === 0 && searchTerm.length > 1 && (
-             <div className="px-4 py-2 text-sm text-gray-500 dark:text-slate-400">Sem resultados para "{searchTerm}"</div>
+            <div className="px-4 py-2 text-sm text-gray-500 dark:text-slate-400">Sem resultados para "{searchTerm}"</div>
           )}
           {suggestions.map((article) => (
             <SuggestionItem key={article.id} article={article} onClick={() => { setShowSuggestions(false); setIsOpen(false); setIsMobileSearchOpen(false); setSearchTerm(''); }} />
           ))}
           {suggestions.length > 0 && (
-            <button onClick={handleSearchSubmit} className="w-full text-center py-3 text-xs font-bold text-brand-blue dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors border-t border-gray-100 dark:border-slate-800 flex items-center justify-center gap-1">Ver todos os resultados <ArrowRight className="w-3 h-3"/></button>
+            <button onClick={handleSearchSubmit} className="w-full text-center py-3 text-xs font-bold text-brand-blue dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors border-t border-gray-100 dark:border-slate-800 flex items-center justify-center gap-1">Ver todos os resultados <ArrowRight className="w-3 h-3" /></button>
           )}
         </div>
       </div>
@@ -141,15 +141,15 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
           <Link to="/" className="flex items-center gap-2 group z-50" onClick={() => { setIsOpen(false); setIsMobileSearchOpen(false); }}>
             <div className="flex items-center gap-2">
               {!logoError ? (
-                <img 
-                  src="https://69697dc3356a14887c615411.imgix.net/logo.png" 
-                  alt="Logo" 
-                  className="h-8 md:h-12 w-auto object-contain rounded-lg transition-transform group-hover:scale-110 duration-300 dark:brightness-110" 
-                  onError={() => setLogoError(true)} 
-                  width="48" 
-                  height="48" 
-                  fetchPriority="high" 
-                  decoding="async" 
+                <img
+                  src="https://69697dc3356a14887c615411.imgix.net/logo.png"
+                  alt="Logo"
+                  className="h-8 md:h-12 w-auto object-contain rounded-lg transition-transform group-hover:scale-110 duration-300 dark:brightness-110"
+                  onError={() => setLogoError(true)}
+                  width="48"
+                  height="48"
+                  fetchPriority="high"
+                  decoding="async"
                 />
               ) : (
                 <div className="text-brand-blue dark:text-blue-400 transition-transform group-hover:scale-110 duration-300">
@@ -177,17 +177,17 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
           </div>
         </div>
       </div>
-      
+
       {/* Barra de Busca Mobile */}
       <div className={`md:hidden absolute top-full left-0 w-full bg-white dark:bg-slate-950 border-b border-gray-100 dark:border-slate-900 shadow-lg transition-all duration-300 origin-top overflow-visible z-40 ${isMobileSearchOpen ? 'max-h-96 opacity-100 py-4' : 'max-h-0 opacity-0 py-0 overflow-hidden'}`}>
-         <div className="px-4 pb-2">
-            <form onSubmit={handleSearchSubmit} className="relative w-full">
-              <input ref={mobileSearchRef} type="text" value={searchTerm} onChange={handleSearchChange} placeholder="O que deseja explorar?" className="w-full bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder-gray-500 rounded-xl py-3 pl-12 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue border border-transparent transition-all" autoComplete="off" />
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Search className="w-5 h-5" /></div>
-              {searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
-            </form>
-            <div className="mt-2 relative"><SuggestionsList /></div>
-         </div>
+        <div className="px-4 pb-2">
+          <form onSubmit={handleSearchSubmit} className="relative w-full">
+            <input ref={mobileSearchRef} type="text" value={searchTerm} onChange={handleSearchChange} placeholder="O que deseja explorar?" className="w-full bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder-gray-500 rounded-xl py-3 pl-12 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue border border-transparent transition-all" autoComplete="off" />
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Search className="w-5 h-5" /></div>
+            {searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
+          </form>
+          <div className="mt-2 relative"><SuggestionsList /></div>
+        </div>
       </div>
 
       <div className="hidden md:block bg-brand-blue dark:bg-slate-900 text-white z-40 shadow-md transition-colors duration-300">
@@ -216,11 +216,11 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
             </div>
           </div>
           <div className="flex items-center relative ml-4 shrink-0" ref={searchContainerRef}>
-             <form onSubmit={handleSearchSubmit} className="relative block mt-1">
-               <input type="text" value={searchTerm} onChange={handleSearchChange} placeholder="Buscar conteúdos..." className="bg-[#003da0] dark:bg-slate-800 text-white placeholder-blue-300 text-sm rounded-full py-2 pl-4 pr-10 focus:outline-none focus:bg-white dark:focus:bg-slate-700 focus:text-gray-900 dark:focus:text-white focus:placeholder-gray-500 transition-all w-44 lg:w-64 border border-transparent focus:border-brand-blue" autoComplete="off" />
-               <button type="submit" className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-brand-blue transition-colors" aria-label="Buscar"><Search className="w-4 h-4" /></button>
-             </form>
-             <div className="w-full absolute top-full mt-2"><SuggestionsList /></div>
+            <form onSubmit={handleSearchSubmit} className="relative block mt-1">
+              <input type="text" value={searchTerm} onChange={handleSearchChange} placeholder="Buscar conteúdos..." className="bg-[#003da0] dark:bg-slate-800 text-white placeholder-blue-300 text-sm rounded-full py-2 pl-4 pr-10 focus:outline-none focus:bg-white dark:focus:bg-slate-700 focus:text-gray-900 dark:focus:text-white focus:placeholder-gray-500 transition-all w-44 lg:w-64 border border-transparent focus:border-brand-blue" autoComplete="off" />
+              <button type="submit" className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-brand-blue transition-colors" aria-label="Buscar"><Search className="w-4 h-4" /></button>
+            </form>
+            <div className="w-full absolute top-full mt-2"><SuggestionsList /></div>
           </div>
         </div>
       </div>
@@ -241,13 +241,13 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
               <div className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${isMobileCategoriesOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="grid grid-cols-2 gap-3 pb-2">
                   {categories.map((cat, index) => (
-                     <Link key={index} to={cat.path} onClick={() => setIsOpen(false)} className="flex items-center justify-center px-4 py-4 text-base text-gray-700 dark:text-slate-300 font-bold bg-gray-50 dark:bg-slate-900 rounded-xl border border-transparent hover:border-brand-blue/30 hover:bg-white dark:hover:bg-slate-800 hover:text-brand-blue dark:hover:text-blue-400 transition-all text-center shadow-sm active:scale-95">{cat.name}</Link>
+                    <Link key={index} to={cat.path} onClick={() => setIsOpen(false)} className="flex items-center justify-center px-4 py-4 text-base text-gray-700 dark:text-slate-300 font-bold bg-gray-50 dark:bg-slate-900 rounded-xl border border-transparent hover:border-brand-blue/30 hover:bg-white dark:hover:bg-slate-800 hover:text-brand-blue dark:hover:text-blue-400 transition-all text-center shadow-sm active:scale-95">{cat.name}</Link>
                   ))}
                 </div>
               </div>
             </div>
             <div className="flex gap-2 pt-4 border-t border-gray-100 dark:border-slate-900 pb-12">
-               <Link to="/contact" onClick={() => setIsOpen(false)} className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-brand-blue text-white hover:bg-brand-dark transition-colors font-bold text-lg shadow-md active:scale-95"><Mail className="w-6 h-6" /> Fale Conosco</Link>
+              <Link to="/contact" onClick={() => setIsOpen(false)} className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-brand-blue text-white hover:bg-brand-dark transition-colors font-bold text-lg shadow-md active:scale-95"><Mail className="w-6 h-6" /> Fale Conosco</Link>
             </div>
           </div>
         </div>

@@ -59,5 +59,8 @@ jobs:
             export SECRET_KEY=$SECRET_KEY
             export GEMINI_API_KEY=$GEMINI_API_KEY
 
+            # Navigate to infra directory for docker-compose
+            cd infra
+
             # Build and Run
             docker-compose up -d --build --remove-orphans

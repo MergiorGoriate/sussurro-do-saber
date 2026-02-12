@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 /* Importing Link from react-router-dom to fix missing exported member error */
 import { Link } from 'react-router-dom';
 import { storageService } from '../services/storageService';
-import ArticleCard from '../components/ArticleCard';
+import ArticleCard from '../components/features/ArticleCard';
 import { Bookmark, ArrowRight, Loader2, BookOpen, Sparkles } from 'lucide-react';
 import { Article } from '../types';
 
@@ -27,7 +27,7 @@ const Favorites: React.FC = () => {
     };
 
     loadFavorites();
-    
+
     // Ouvir mudanças no storage (caso o utilizador remova dos favoritos em outra aba)
     window.addEventListener('storage-update', loadFavorites);
     return () => window.removeEventListener('storage-update', loadFavorites);
@@ -47,19 +47,19 @@ const Favorites: React.FC = () => {
         <div className="absolute top-0 right-0 p-10 opacity-10 transform translate-x-10 -translate-y-10">
           <Bookmark className="w-64 h-64" />
         </div>
-        
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <div className="inline-flex items-center justify-center p-3 bg-white/10 backdrop-blur-sm rounded-full mb-6">
             <Bookmark className="w-8 h-8 text-amber-300 mr-2 fill-current" />
             <span className="font-bold text-amber-100 tracking-wide uppercase text-sm">Biblioteca Pessoal</span>
           </div>
-          
+
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
-             Os Meus Favoritos
+            Os Meus Favoritos
           </h1>
-          
+
           <p className="text-blue-100 text-lg md:text-xl max-w-2xl mx-auto font-light leading-relaxed">
-             A sua coleção curada de conhecimento. Artigos que guardou para ler mais tarde ou consultar novamente.
+            A sua coleção curada de conhecimento. Artigos que guardou para ler mais tarde ou consultar novamente.
           </p>
         </div>
       </div>
@@ -80,8 +80,8 @@ const Favorites: React.FC = () => {
             <p className="text-gray-500 mb-8">
               Explore os nossos temas e clique no botão <strong>Guardar</strong> para criar a sua biblioteca personalizada de conhecimento.
             </p>
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-flex items-center gap-2 px-8 py-3 bg-brand-blue text-white rounded-xl font-bold hover:bg-brand-dark transition-all shadow-md hover:shadow-lg"
             >
               Explorar Artigos <ArrowRight size={18} />
@@ -90,14 +90,14 @@ const Favorites: React.FC = () => {
         )}
 
         {bookmarkedArticles.length > 0 && (
-           <div className="mt-20 p-8 bg-brand-blue rounded-3xl text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl relative overflow-hidden group">
-              <Sparkles className="absolute -right-4 -bottom-4 w-32 h-32 text-white/10 group-hover:scale-110 transition-transform" />
-              <div className="relative z-10 text-center md:text-left">
-                <h3 className="text-2xl font-bold mb-2">Quer testar o seu saber?</h3>
-                <p className="text-blue-100">Prepare-se para o nosso quiz semanal baseado nos temas que guardou.</p>
-              </div>
-              <Link to="/quiz" className="relative z-10 bg-white text-brand-blue px-8 py-3 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg">Ir para o Quiz</Link>
-           </div>
+          <div className="mt-20 p-8 bg-brand-blue rounded-3xl text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl relative overflow-hidden group">
+            <Sparkles className="absolute -right-4 -bottom-4 w-32 h-32 text-white/10 group-hover:scale-110 transition-transform" />
+            <div className="relative z-10 text-center md:text-left">
+              <h3 className="text-2xl font-bold mb-2">Quer testar o seu saber?</h3>
+              <p className="text-blue-100">Prepare-se para o nosso quiz semanal baseado nos temas que guardou.</p>
+            </div>
+            <Link to="/quiz" className="relative z-10 bg-white text-brand-blue px-8 py-3 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg">Ir para o Quiz</Link>
+          </div>
         )}
       </div>
     </div>

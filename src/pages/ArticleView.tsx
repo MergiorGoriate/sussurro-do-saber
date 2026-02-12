@@ -11,7 +11,7 @@ import {
   FileText, PlusCircle, ExternalLink, AlertCircle, Sparkles
 } from 'lucide-react';
 import { Article, Comment, Footnote, FootnoteType } from '../types';
-import SimpleMarkdown from '../components/SimpleMarkdown';
+import SimpleMarkdown from '../components/ui/SimpleMarkdown';
 
 const ArticleView: React.FC = () => {
   const { id } = useParams<{ id: string }>();

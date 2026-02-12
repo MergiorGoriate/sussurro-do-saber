@@ -3,10 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { storageService } from '../services/storageService';
 import { AUTHOR_DATA } from '../constants';
-import ArticleCard from '../components/ArticleCard';
-import { 
-  User, MapPin, Calendar, Award, BookOpen, Check, MessageSquare, 
-  X, Send, Loader2, Bell, Instagram, Linkedin 
+import ArticleCard from '../components/features/ArticleCard';
+import {
+  User, MapPin, Calendar, Award, BookOpen, Check, MessageSquare,
+  X, Send, Loader2, Bell, Instagram, Linkedin
 } from 'lucide-react';
 import { Article } from '../types';
 
@@ -21,7 +21,7 @@ const AnimatedCounter = ({ value, label }: { value: number, label: string }) => 
     startTimeRef.current = null;
     const delta = Math.abs(value - startValueRef.current);
     const isSmallChange = delta < 10;
-    const duration = isSmallChange ? 600 : 2500; 
+    const duration = isSmallChange ? 600 : 2500;
 
     const animate = (timestamp: number) => {
       if (!startTimeRef.current) startTimeRef.current = timestamp;
@@ -40,14 +40,14 @@ const AnimatedCounter = ({ value, label }: { value: number, label: string }) => 
   }, [value]);
 
   const format = (n: number) => {
-     if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
-     return Math.floor(n).toLocaleString();
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+    return Math.floor(n).toLocaleString();
   };
 
   return (
     <div className="flex flex-col items-center group cursor-default p-4 rounded-2xl hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors w-full sm:w-32" title={`${Math.floor(displayValue)} ${label}`}>
-       <span className="block text-2xl md:text-3xl font-black text-brand-blue dark:text-white transition-colors mb-1">{format(displayValue)}</span>
-       <span className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">{label}</span>
+      <span className="block text-2xl md:text-3xl font-black text-brand-blue dark:text-white transition-colors mb-1">{format(displayValue)}</span>
+      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">{label}</span>
     </div>
   );
 };
@@ -55,14 +55,14 @@ const AnimatedCounter = ({ value, label }: { value: number, label: string }) => 
 const Author: React.FC = () => {
   const { name } = useParams<{ name: string }>();
   const decodedName = decodeURIComponent(name || '');
-  
+
   const [isFollowing, setIsFollowing] = useState(() => {
     const saved = localStorage.getItem(`follow_${decodedName}`);
     return saved ? JSON.parse(saved) : false;
   });
 
   const [isAnimatingFollow, setIsAnimatingFollow] = useState(false);
-  const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
+  const [toast, setToast] = useState<{ show: boolean, message: string }>({ show: false, message: '' });
   const [showMsgModal, setShowMsgModal] = useState(false);
   const [msgText, setMsgText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -89,7 +89,7 @@ const Author: React.FC = () => {
     instagram: '#',
     linkedin: '#'
   };
-  
+
   const authorProfile = {
     name: decodedName,
     role: profileInfo.role,
@@ -115,7 +115,7 @@ const Author: React.FC = () => {
     setIsFollowing(newState);
     localStorage.setItem(`follow_${decodedName}`, JSON.stringify(newState));
     setToast({ show: true, message: newState ? `Você agora está seguindo ${decodedName}` : `Você deixou de seguir ${decodedName}` });
-    setTimeout(() => { setToast(prev => ({...prev, show: false})); }, 3000);
+    setTimeout(() => { setToast(prev => ({ ...prev, show: false })); }, 3000);
   };
 
   const handleMessageOpen = () => { setShowMsgModal(true); setMsgSent(false); setMsgText(''); };
@@ -137,32 +137,32 @@ const Author: React.FC = () => {
       <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
         <div className="max-w-5xl mx-auto px-6 py-12 md:py-20">
           <div className="flex flex-col md:flex-row gap-8 md:gap-14 items-start">
-            
+
             {/* NEW AVATAR STYLE - M-CIRCLE */}
             <div className="shrink-0">
-               <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center shadow-sm relative overflow-hidden group">
-                  {authorProfile.image ? (
-                    <img 
-                      src={authorProfile.image} 
-                      alt={authorProfile.name} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-                    />
-                  ) : (
-                    <span className="text-4xl font-black text-brand-blue dark:text-blue-400">
-                      {authorProfile.name.charAt(0)}
-                    </span>
-                  )}
-               </div>
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center shadow-sm relative overflow-hidden group">
+                {authorProfile.image ? (
+                  <img
+                    src={authorProfile.image}
+                    alt={authorProfile.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                ) : (
+                  <span className="text-4xl font-black text-brand-blue dark:text-blue-400">
+                    {authorProfile.name.charAt(0)}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="flex-grow pt-2">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
                 <div>
-                   {/* NAME WITH BLUE UNDERLINE AS PER IMAGE */}
-                   <h1 className="inline-block text-2xl md:text-3xl font-black text-brand-blue dark:text-white tracking-tight border-b-[3px] border-blue-100 dark:border-blue-900/50 pb-1 mb-2">
-                     {authorProfile.name}
-                   </h1>
-                   <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{authorProfile.role}</p>
+                  {/* NAME WITH BLUE UNDERLINE AS PER IMAGE */}
+                  <h1 className="inline-block text-2xl md:text-3xl font-black text-brand-blue dark:text-white tracking-tight border-b-[3px] border-blue-100 dark:border-blue-900/50 pb-1 mb-2">
+                    {authorProfile.name}
+                  </h1>
+                  <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{authorProfile.role}</p>
                 </div>
 
                 <div className="flex gap-3">
@@ -183,12 +183,12 @@ const Author: React.FC = () => {
               <p className="text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl mb-8 font-serif italic text-lg">
                 "{authorProfile.bio}"
               </p>
-              
+
               <div className="flex items-center gap-3">
                 {authorProfile.social.instagram && (
-                  <a 
-                    href={authorProfile.social.instagram} 
-                    target="_blank" 
+                  <a
+                    href={authorProfile.social.instagram}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 hover:text-brand-blue hover:border-brand-blue transition-all"
                     aria-label="Instagram"
@@ -197,9 +197,9 @@ const Author: React.FC = () => {
                   </a>
                 )}
                 {authorProfile.social.linkedin && (
-                  <a 
-                    href={authorProfile.social.linkedin} 
-                    target="_blank" 
+                  <a
+                    href={authorProfile.social.linkedin}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 hover:text-brand-blue hover:border-brand-blue transition-all"
                     aria-label="LinkedIn"
@@ -212,11 +212,11 @@ const Author: React.FC = () => {
           </div>
 
           <div className="mt-16 bg-slate-50 dark:bg-slate-800/30 rounded-[32px] p-2 flex flex-col sm:flex-row justify-around border border-slate-100 dark:border-slate-800">
-             <AnimatedCounter value={authorProfile.stats.articles} label="Artigos" />
-             <div className="hidden sm:block w-px bg-slate-200 dark:bg-slate-700 my-4"></div>
-             <AnimatedCounter value={authorProfile.stats.reads} label="Visualizações" />
-             <div className="hidden sm:block w-px bg-slate-200 dark:bg-slate-700 my-4"></div>
-             <AnimatedCounter value={authorProfile.stats.followers} label="Seguidores" />
+            <AnimatedCounter value={authorProfile.stats.articles} label="Artigos" />
+            <div className="hidden sm:block w-px bg-slate-200 dark:bg-slate-700 my-4"></div>
+            <AnimatedCounter value={authorProfile.stats.reads} label="Visualizações" />
+            <div className="hidden sm:block w-px bg-slate-200 dark:bg-slate-700 my-4"></div>
+            <AnimatedCounter value={authorProfile.stats.followers} label="Seguidores" />
           </div>
         </div>
       </div>
@@ -224,7 +224,7 @@ const Author: React.FC = () => {
       <div className="max-w-5xl mx-auto px-6 py-20">
         <div className="flex items-center gap-4 mb-12">
           <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight font-sans">
-             Repositório de Publicações
+            Repositório de Publicações
           </h2>
           <div className="h-px flex-grow bg-slate-200 dark:bg-slate-800"></div>
         </div>
@@ -261,26 +261,26 @@ const Author: React.FC = () => {
           <div className="bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl w-full max-w-lg relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                 <MessageSquare size={20} className="text-brand-blue" /> Contactar Autor
+                <MessageSquare size={20} className="text-brand-blue" /> Contactar Autor
               </h3>
               <button onClick={() => setShowMsgModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={24} /></button>
             </div>
             <div className="p-8">
               {msgSent ? (
-                 <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in zoom-in">
-                    <div className="w-16 h-16 bg-green-50 dark:bg-green-900/20 text-green-500 rounded-full flex items-center justify-center mb-6"><Check size={32} /></div>
-                    <h4 className="text-xl font-black text-slate-900 dark:text-white mb-2 uppercase">Manuscrito Enviado</h4>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">O autor receberá a sua comunicação em breve.</p>
-                 </div>
+                <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in zoom-in">
+                  <div className="w-16 h-16 bg-green-50 dark:bg-green-900/20 text-green-500 rounded-full flex items-center justify-center mb-6"><Check size={32} /></div>
+                  <h4 className="text-xl font-black text-slate-900 dark:text-white mb-2 uppercase">Manuscrito Enviado</h4>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">O autor receberá a sua comunicação em breve.</p>
+                </div>
               ) : (
                 <form onSubmit={handleSendMessage} className="space-y-6">
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Assunto ou Mensagem Académica</label>
-                    <textarea 
-                      value={msgText} 
-                      onChange={(e) => setMsgText(e.target.value)} 
-                      placeholder={`Prezado(a) ${authorProfile.name.split(' ')[0]}, gostaria de discutir...`} 
-                      className="w-full h-44 p-6 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-brand-blue transition-all outline-none text-slate-700 dark:text-white font-serif resize-none" 
+                    <textarea
+                      value={msgText}
+                      onChange={(e) => setMsgText(e.target.value)}
+                      placeholder={`Prezado(a) ${authorProfile.name.split(' ')[0]}, gostaria de discutir...`}
+                      className="w-full h-44 p-6 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-brand-blue transition-all outline-none text-slate-700 dark:text-white font-serif resize-none"
                       required
                     ></textarea>
                   </div>

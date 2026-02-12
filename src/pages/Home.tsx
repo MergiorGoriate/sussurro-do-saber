@@ -3,8 +3,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { storageService } from '../services/storageService';
 import { apiService } from '../services/apiService';
-import ArticleCard from '../components/ArticleCard';
-import NewsletterSection from '../components/NewsletterSection';
+import ArticleCard from '../components/features/ArticleCard';
+import NewsletterSection from '../components/features/NewsletterSection';
 import {
   Search, Loader2, Database, Globe, TrendingUp,
   Filter, BookOpen, Dna,

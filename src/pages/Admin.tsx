@@ -9,7 +9,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { storageService } from '../services/storageService';
 import { Article, Comment, BlogUser, Category, CommentStatus, BlogSettings, Footnote, FootnoteStatus } from '../types';
-import ArticleEditor from '../components/ArticleEditor';
+import ArticleEditor from '../components/features/ArticleEditor';
 
 const Admin: React.FC = () => {
     const navigate = useNavigate();

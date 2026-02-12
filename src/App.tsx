@@ -1,12 +1,12 @@
 
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import CookieConsent from './components/CookieConsent';
-import SubscriptionAlert from './components/SubscriptionAlert';
-import ChatWidget from './components/ChatWidget';
-import { ScrollToTopButton } from './components/ScrollToTopButton';
+import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
+import CookieConsent from './components/features/CookieConsent';
+import SubscriptionAlert from './components/features/SubscriptionAlert';
+import ChatWidget from './components/features/ChatWidget';
+import { ScrollToTopButton } from './components/ui/ScrollToTopButton';
 import { Loader2 } from 'lucide-react';
 import Home from './pages/Home';
 

@@ -7,7 +7,7 @@ import {
   ChevronRight, X, Copy, MessageCircle, Facebook,
   Twitter, Send, Linkedin
 } from 'lucide-react';
-import { Article } from '../types';
+import { Article } from '../../types';
 
 interface ArticleCardProps {
   article: Article;
