@@ -1,8 +1,0 @@
-flask
-flask-cors
-python-dotenv
-flask-sqlalchemy
-flask-bcrypt
-pyjwt
-google-generativeai
-gunicorn

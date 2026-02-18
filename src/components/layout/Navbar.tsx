@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, Menu, X, Brain, Book, Home, Mail, HelpCircle, ArrowRight, Lightbulb, Loader2, Bookmark, Sun, Moon, FileDown } from 'lucide-react';
+import { Search, ChevronDown, Menu, X, Brain, Book, Home, Mail, HelpCircle, ArrowRight, Lightbulb, Loader2, Bookmark, Sun, Moon, FileDown, Languages } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { storageService } from '../../services/storageService';
 import { Article } from '../../types';
 
@@ -31,6 +32,7 @@ const SuggestionItem: React.FC<{ article: Article; onClick: () => void }> = ({ a
 };
 
 const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
+  const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMobileCategoriesOpen, setIsMobileCategoriesOpen] = useState(true);
@@ -111,10 +113,14 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
     { name: 'Curiosidades', path: '/?cat=Curiosidades' }, { name: 'Fatos Nerd', path: '/?cat=Fatos Nerd' },
   ];
 
-  const SuggestionsList = () => {
+  const SuggestionsList = ({ isMobile = false }: { isMobile?: boolean }) => {
     if (!showSuggestions) return null;
+
+    const desktopClasses = "absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden z-[60] animate-in fade-in slide-in-from-top-2 duration-200";
+    const mobileClasses = "mt-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-800 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200";
+
     return (
-      <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden z-[60] animate-in fade-in slide-in-from-top-2 duration-200">
+      <div className={isMobile ? mobileClasses : desktopClasses}>
         <div className="py-2">
           <h3 className="px-4 py-2 text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider flex justify-between">
             <span>Sugestões</span>
@@ -163,17 +169,28 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
-            <Link to="/" className={`text-sm font-bold transition-colors hover:underline decoration-2 underline-offset-4 ${location.pathname === '/' ? 'text-brand-blue dark:text-blue-400 underline' : 'text-gray-700 dark:text-slate-300 hover:text-brand-blue'}`}>Home</Link>
-            <Link to="/about" className={`text-sm font-bold transition-colors hover:underline decoration-2 underline-offset-4 ${location.pathname === '/about' ? 'text-brand-blue dark:text-blue-400 underline' : 'text-gray-700 dark:text-slate-300 hover:text-brand-blue'}`}>Sobre nós</Link>
-            <Link to="/contact" className={`text-sm font-bold transition-colors hover:underline decoration-2 underline-offset-4 ${location.pathname === '/contact' ? 'text-brand-blue dark:text-blue-400 underline' : 'text-gray-700 dark:text-slate-300 hover:text-brand-blue'}`}>Contato</Link>
+            <Link to="/" className={`text-sm font-bold transition-colors hover:underline decoration-2 underline-offset-4 ${location.pathname === '/' ? 'text-brand-blue dark:text-blue-400 underline' : 'text-gray-700 dark:text-slate-300 hover:text-brand-blue'}`}>{t('nav.home')}</Link>
+            <Link to="/about" className={`text-sm font-bold transition-colors hover:underline decoration-2 underline-offset-4 ${location.pathname === '/about' ? 'text-brand-blue dark:text-blue-400 underline' : 'text-gray-700 dark:text-slate-300 hover:text-brand-blue'}`}>{t('nav.about')}</Link>
+            <Link to="/contact" className={`text-sm font-bold transition-colors hover:underline decoration-2 underline-offset-4 ${location.pathname === '/contact' ? 'text-brand-blue dark:text-blue-400 underline' : 'text-gray-700 dark:text-slate-300 hover:text-brand-blue'}`}>{t('nav.contact')}</Link>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            <button onClick={onToggleTheme} className="p-2 rounded-full text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors" aria-label="Alterar tema">
+            <div className="flex items-center mr-1">
+              <button
+                onClick={() => i18n.changeLanguage(i18n.language === 'pt' ? 'en' : 'pt')}
+                className="p-2 flex items-center gap-1.5 text-xs font-black text-slate-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors uppercase tracking-widest"
+                title={i18n.language === 'pt' ? t('accessibility.switch_language_en') : t('accessibility.switch_language_pt')}
+                aria-label={i18n.language === 'pt' ? t('accessibility.switch_language_en') : t('accessibility.switch_language_pt')}
+              >
+                <Languages size={18} />
+                <span className="hidden sm:inline">{i18n.language}</span>
+              </button>
+            </div>
+            <button onClick={onToggleTheme} className="p-2 rounded-full text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors" aria-label={theme === 'dark' ? t('accessibility.switch_theme_light') : t('accessibility.switch_theme_dark')} title={theme === 'dark' ? t('accessibility.switch_theme_light') : t('accessibility.switch_theme_dark')}>
               {theme === 'dark' ? <Sun size={22} /> : <Moon size={22} />}
             </button>
-            <button onClick={toggleMobileSearch} className={`p-2 rounded-full transition-all duration-300 md:hidden ${isMobileSearchOpen ? 'bg-blue-50 dark:bg-blue-900/20 text-brand-blue dark:text-blue-400' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100'}`} aria-label="Buscar"><Search size={22} /></button>
-            <button onClick={toggleMenu} className={`p-2 rounded-full transition-all duration-300 md:hidden ${isOpen ? 'bg-blue-50 dark:bg-blue-900/20 text-brand-blue dark:text-blue-400' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100'}`} aria-label="Menu">{isOpen ? <X size={22} /> : <Menu size={22} />}</button>
+            <button onClick={toggleMobileSearch} className={`p-2 rounded-full transition-all duration-300 md:hidden ${isMobileSearchOpen ? 'bg-blue-50 dark:bg-blue-900/20 text-brand-blue dark:text-blue-400' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100'}`} aria-label={t('accessibility.open_search')} title={t('accessibility.open_search')}><Search size={22} /></button>
+            <button onClick={toggleMenu} className={`p-2 rounded-full transition-all duration-300 md:hidden ${isOpen ? 'bg-blue-50 dark:bg-blue-900/20 text-brand-blue dark:text-blue-400' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100'}`} aria-label={t('accessibility.open_menu')} title={t('accessibility.open_menu')}>{isOpen ? <X size={22} /> : <Menu size={22} />}</button>
           </div>
         </div>
       </div>
@@ -184,9 +201,9 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
           <form onSubmit={handleSearchSubmit} className="relative w-full">
             <input ref={mobileSearchRef} type="text" value={searchTerm} onChange={handleSearchChange} placeholder="O que deseja explorar?" className="w-full bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder-gray-500 rounded-xl py-3 pl-12 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue border border-transparent transition-all" autoComplete="off" />
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Search className="w-5 h-5" /></div>
-            {searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
+            {searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600" aria-label={t('accessibility.clear_search')} title={t('accessibility.clear_search')}><X className="w-4 h-4" /></button>}
           </form>
-          <div className="mt-2 relative"><SuggestionsList /></div>
+          <div className="mt-2 relative"><SuggestionsList isMobile={true} /></div>
         </div>
       </div>
 
@@ -194,7 +211,7 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center overflow-visible">
           <div className="flex items-center h-full min-w-0">
             <button className="flex items-center gap-2 text-sm font-bold px-4 lg:px-5 h-full bg-brand-blue dark:bg-slate-900 hover:bg-[#003da0] dark:hover:bg-slate-800 transition-colors group relative focus:outline-none shrink-0">
-              <span>Assuntos</span>
+              <span>{t('nav.subjects')}</span>
               <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180 duration-300" />
               <div className="absolute top-full left-0 w-[600px] bg-white dark:bg-slate-900 shadow-2xl rounded-b-xl py-4 hidden group-hover:block z-50 text-gray-800 dark:text-slate-200 border-t-4 border-brand-dark ring-1 ring-black/5">
                 <div className="grid grid-cols-2 gap-2 p-2">
@@ -209,16 +226,16 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
             </button>
             <div className="h-8 w-px bg-blue-400/30 dark:bg-slate-700 mx-2 shrink-0"></div>
             <div className="flex items-center min-w-0 overflow-x-auto no-scrollbar gap-1">
-              <Link to="/quiz" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap ${location.pathname === '/quiz' ? 'bg-white/10' : ''}`}>Quiz (TESTES)</Link>
-              <Link to="/educadicas" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap ${location.pathname === '/educadicas' ? 'bg-white/10' : ''}`}>Educadicas</Link>
-              <Link to="/favorites" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${location.pathname === '/favorites' ? 'bg-white/10' : ''}`}><Bookmark size={16} className={location.pathname === '/favorites' ? 'fill-current' : ''} /> Favoritos</Link>
-              <Link to="/resources" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${location.pathname === '/resources' ? 'bg-white/10' : ''}`}><FileDown size={16} /> Recursos</Link>
+              <Link to="/quiz" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap ${location.pathname === '/quiz' ? 'bg-white/10' : ''}`}>{t('nav.quiz')}</Link>
+              <Link to="/educadicas" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap ${location.pathname === '/educadicas' ? 'bg-white/10' : ''}`}>{t('nav.educadicas')}</Link>
+              <Link to="/favorites" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${location.pathname === '/favorites' ? 'bg-white/10' : ''}`}><Bookmark size={16} className={location.pathname === '/favorites' ? 'fill-current' : ''} /> {t('nav.favorites')}</Link>
+              <Link to="/resources" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${location.pathname === '/resources' ? 'bg-white/10' : ''}`}><FileDown size={16} /> {t('nav.resources')}</Link>
             </div>
           </div>
           <div className="flex items-center relative ml-4 shrink-0" ref={searchContainerRef}>
             <form onSubmit={handleSearchSubmit} className="relative block mt-1">
               <input type="text" value={searchTerm} onChange={handleSearchChange} placeholder="Buscar conteúdos..." className="bg-[#003da0] dark:bg-slate-800 text-white placeholder-blue-300 text-sm rounded-full py-2 pl-4 pr-10 focus:outline-none focus:bg-white dark:focus:bg-slate-700 focus:text-gray-900 dark:focus:text-white focus:placeholder-gray-500 transition-all w-44 lg:w-64 border border-transparent focus:border-brand-blue" autoComplete="off" />
-              <button type="submit" className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-brand-blue transition-colors" aria-label="Buscar"><Search className="w-4 h-4" /></button>
+              <button type="submit" className="absolute right-0 top-0 h-full px-3 text-blue-300 hover:text-brand-blue transition-colors" aria-label={t('accessibility.search_submit')} title={t('accessibility.search_submit')}><Search className="w-4 h-4" /></button>
             </form>
             <div className="w-full absolute top-full mt-2"><SuggestionsList /></div>
           </div>

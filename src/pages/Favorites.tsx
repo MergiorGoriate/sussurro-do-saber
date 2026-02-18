@@ -15,10 +15,53 @@ const Favorites: React.FC = () => {
     const loadFavorites = async () => {
       setIsLoading(true);
       try {
-        const allArticles = await storageService.getArticles();
         const interactions = storageService.getUserInteractions();
-        const filtered = allArticles.filter(a => interactions.bookmarkedArticles.includes(a.id));
-        setBookmarkedArticles(filtered);
+        // Robust filtering: ensure strings, remove invalid 'null'/'undefined' strings
+        const bookmarks = (interactions.bookmarkedArticles || [])
+          .map(String)
+          .filter(id => id && id !== 'undefined' && id !== 'null');
+
+        // Initial Set deduplication
+        const uniqueBookmarks = Array.from(new Set(bookmarks));
+
+        if (uniqueBookmarks.length === 0) {
+          setBookmarkedArticles([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch all candidates parallelly
+        const promises = uniqueBookmarks.map(async (item: string) => {
+          try {
+            // Try fetching by the stored item (Slug or ID)
+            const art = await storageService.getArticleById(item);
+            return art;
+          } catch (error) {
+            // Silent catch - if one fails, we just don't show it
+            return null;
+          }
+        });
+
+        const results = await Promise.all(promises);
+
+        // Filter out nulls
+        const validArticles = results.filter((a): a is Article => !!a);
+
+        // Advanced Deduplication by Article ID
+        // This handles cases where user bookmarked both "123" and "my-slug"
+        // which point to the same article.
+        const uniqueArticlesMap = new Map<string, Article>();
+
+        validArticles.forEach(article => {
+          if (article && article.id) {
+            // Use ID as the unique key
+            uniqueArticlesMap.set(String(article.id), article);
+          }
+        });
+
+        // Convert Map values back to array
+        setBookmarkedArticles(Array.from(uniqueArticlesMap.values()));
+
       } catch (error) {
         console.error("Erro ao carregar favoritos:", error);
       } finally {

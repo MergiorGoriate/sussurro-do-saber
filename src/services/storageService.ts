@@ -10,8 +10,6 @@ const STORAGE_KEYS = {
 };
 
 class JournalBackend {
-  // Mantemos db local apenas para compatibilidade de UI se necessário, 
-  // mas agora a fonte da verdade é o servidor.
   private db: {
     articles: Article[];
     comments: Comment[];
@@ -57,7 +55,7 @@ class JournalBackend {
   }
 
   public async addComment(articleId: string, author: string, content: string, email?: string): Promise<Comment> {
-    const response = await fetch(`http://127.0.0.1:5000/api/articles/${articleId}/comments`, {
+    const response = await fetch(`http://localhost:8000/api/articles/${articleId}/comments/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ author, content, email })
@@ -67,32 +65,30 @@ class JournalBackend {
   }
 
   public async getArticleComments(articleId: string): Promise<Comment[]> {
-    const response = await fetch(`http://127.0.0.1:5000/api/articles/${articleId}/comments`);
+    const response = await fetch(`http://localhost:8000/api/articles/${articleId}/comments/`);
     if (!response.ok) return [];
     return response.json();
   }
 
   public async toggleLike(id: string): Promise<boolean> {
-    const response = await fetch(`http://127.0.0.1:5000/api/articles/${id}/like`, { method: 'POST' });
+    const safeId = String(id);
+    const response = await fetch(`http://localhost:8000/api/articles/${safeId}/like/`, { method: 'POST' });
     if (!response.ok) return false;
-    const data = await response.json();
 
-    // Sincronizar localmente para efeitos visuais rápidos
+    // Sync locally
     const stats = this.getUserInteractions();
-    const idx = stats.likedArticles.indexOf(id);
+    const idx = stats.likedArticles.indexOf(safeId);
     if (idx === -1) {
-      stats.likedArticles.push(id);
-      localStorage.setItem(STORAGE_KEYS.INTERACTIONS, JSON.stringify(stats));
-      return true;
+      stats.likedArticles.push(safeId);
     } else {
       stats.likedArticles.splice(idx, 1);
-      localStorage.setItem(STORAGE_KEYS.INTERACTIONS, JSON.stringify(stats));
-      return false;
     }
+    localStorage.setItem(STORAGE_KEYS.INTERACTIONS, JSON.stringify(stats));
+    return true;
   }
 
   public async addSubscriber(email: string): Promise<boolean> {
-    const response = await fetch(`http://127.0.0.1:5000/api/subscribers`, {
+    const response = await fetch(`http://localhost:8000/api/subscribers/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
@@ -101,11 +97,12 @@ class JournalBackend {
   }
 
   public async login(email: string, pass: string): Promise<BlogUser | null> {
-    const response = await fetch(`http://127.0.0.1:5000/api/auth/login`, {
+    const response = await fetch(`http://localhost:8000/api/auth/login/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password: pass })
     });
+    if (!response.ok) return null;
     const data = await response.json();
     localStorage.setItem(STORAGE_KEYS.AUTH, data.token);
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data.user));
@@ -124,10 +121,10 @@ class JournalBackend {
 
   public async saveArticle(article: Partial<Article>, user: BlogUser) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const method = article.id ? 'PUT' : 'POST';
-    const url = article.id
-      ? `http://127.0.0.1:5000/api/articles/${article.id}`
-      : `http://127.0.0.1:5000/api/articles`;
+    const method = article.slug ? 'PUT' : 'POST';
+    const url = article.slug
+      ? `http://localhost:8000/api/articles/${article.slug}/`
+      : `http://localhost:8000/api/articles/`;
 
     const response = await fetch(url, {
       method,
@@ -144,7 +141,7 @@ class JournalBackend {
 
   public async deleteArticle(id: string) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/articles/${id}`, {
+    const response = await fetch(`http://localhost:8000/api/articles/${id}/`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -153,17 +150,27 @@ class JournalBackend {
   }
 
   public getUserInteractions() {
-    const data = localStorage.getItem(STORAGE_KEYS.INTERACTIONS);
-    return data ? JSON.parse(data) : { likedArticles: [], bookmarkedArticles: [] };
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.INTERACTIONS);
+      const parsed = data ? JSON.parse(data) : { likedArticles: [], bookmarkedArticles: [] };
+      return {
+        likedArticles: Array.from(new Set((parsed.likedArticles || []).map(String).filter((id: string) => id && id !== 'undefined' && id !== 'null'))),
+        bookmarkedArticles: Array.from(new Set((parsed.bookmarkedArticles || []).map(String).filter((id: string) => id && id !== 'undefined' && id !== 'null')))
+      };
+    } catch (e) {
+      console.warn("Storage corrupted, resetting:", e);
+      return { likedArticles: [], bookmarkedArticles: [] };
+    }
   }
 
   public async toggleBookmark(id: string): Promise<boolean> {
+    const safeId = String(id);
     const stats = this.getUserInteractions();
-    const idx = stats.bookmarkedArticles.indexOf(id);
+    const idx = stats.bookmarkedArticles.indexOf(safeId);
     let result = false;
 
     if (idx === -1) {
-      stats.bookmarkedArticles.push(id);
+      stats.bookmarkedArticles.push(safeId);
       result = true;
     } else {
       stats.bookmarkedArticles.splice(idx, 1);
@@ -175,19 +182,19 @@ class JournalBackend {
     return result;
   }
 
-  // Métodos administrativos adaptados para a API
   public async getComments(): Promise<Comment[]> {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/comments`, {
+    const response = await fetch(`http://localhost:8000/api/comments/`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) return [];
-    return response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.results || []);
   }
 
   public async updateCommentStatus(id: string, status: CommentStatus, user: BlogUser) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/comments/${id}`, {
+    const response = await fetch(`http://localhost:8000/api/comments/${id}/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -200,7 +207,7 @@ class JournalBackend {
 
   public async deleteComment(id: string, user: BlogUser) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/comments/${id}`, {
+    const response = await fetch(`http://localhost:8000/api/comments/${id}/`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -209,7 +216,7 @@ class JournalBackend {
 
   public async getSubscribers(): Promise<string[]> {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/subscribers`, {
+    const response = await fetch(`http://localhost:8000/api/subscribers/`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) return [];
@@ -217,14 +224,14 @@ class JournalBackend {
   }
 
   public async getSettings(): Promise<BlogSettings> {
-    const response = await fetch(`http://127.0.0.1:5000/api/settings`);
+    const response = await fetch(`http://localhost:8000/api/settings/`);
     if (!response.ok) return this.db.settings;
     return response.json();
   }
 
   public async updateSettings(settings: BlogSettings) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/settings`, {
+    const response = await fetch(`http://localhost:8000/api/settings/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -237,7 +244,7 @@ class JournalBackend {
 
   public async getUsers(): Promise<BlogUser[]> {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/users`, {
+    const response = await fetch(`http://localhost:8000/api/users/`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) return [];
@@ -246,7 +253,7 @@ class JournalBackend {
 
   public async createUser(userData: Partial<BlogUser>) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/users`, {
+    const response = await fetch(`http://localhost:8000/api/users/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -262,7 +269,7 @@ class JournalBackend {
 
   public async updateProfile(profileData: Partial<BlogUser>) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/auth/profile`, {
+    const response = await fetch(`http://localhost:8000/api/auth/profile/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -277,7 +284,7 @@ class JournalBackend {
   }
 
   public async getMedia(): Promise<MediaItem[]> {
-    return []; // Para implementar se houver upload real
+    return [];
   }
 
   // FOOTNOTES
@@ -291,7 +298,7 @@ class JournalBackend {
 
   public async getAllFootnotes(): Promise<Footnote[]> {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/footnotes`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/footnotes/`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) return [];
@@ -300,7 +307,7 @@ class JournalBackend {
 
   public async updateFootnoteStatus(id: string, status: FootnoteStatus) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/footnotes/${id}`, {
+    const response = await fetch(`http://localhost:8000/api/footnotes/${id}/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -313,7 +320,7 @@ class JournalBackend {
 
   public async deleteFootnote(id: string) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://127.0.0.1:5000/api/footnotes/${id}`, {
+    const response = await fetch(`http://localhost:8000/api/footnotes/${id}/`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });

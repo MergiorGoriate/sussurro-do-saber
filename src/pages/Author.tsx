@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { storageService } from '../services/storageService';
+import { apiService } from '../services/apiService';
 import { AUTHOR_DATA } from '../constants';
 import ArticleCard from '../components/features/ArticleCard';
 import {
@@ -55,81 +56,128 @@ const AnimatedCounter = ({ value, label }: { value: number, label: string }) => 
 const Author: React.FC = () => {
   const { name } = useParams<{ name: string }>();
   const decodedName = decodeURIComponent(name || '');
-
-  const [isFollowing, setIsFollowing] = useState(() => {
-    const saved = localStorage.getItem(`follow_${decodedName}`);
-    return saved ? JSON.parse(saved) : false;
-  });
-
+  const [isFollowing, setIsFollowing] = useState(false);
   const [isAnimatingFollow, setIsAnimatingFollow] = useState(false);
   const [toast, setToast] = useState<{ show: boolean, message: string }>({ show: false, message: '' });
+
+  // Mensagem Modal State
   const [showMsgModal, setShowMsgModal] = useState(false);
+  const [msgName, setMsgName] = useState('');
+  const [msgEmail, setMsgEmail] = useState('');
   const [msgText, setMsgText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
+
   const [authorArticles, setAuthorArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // State para o perfil
+  const [profileData, setProfileData] = useState<any>(null);
+
+  // Auth Token (Simulado ou Real) -> Em app real viria de Context/Redux
+  // Por simplicidade, assumimos que o user pode ter um token no localStorage se estiver logado
+  const getAuthToken = () => localStorage.getItem('token');
+
   useEffect(() => {
-    const fetchArticles = async () => {
+    const fetchData = async () => {
       setLoading(true);
-      const allArticles = await storageService.getArticles();
-      setAuthorArticles(allArticles.filter(article => article.author === decodedName));
+      const token = getAuthToken();
+
+      // Fetch artigos e perfil em paralelo
+      const [articles, profile] = await Promise.all([
+        apiService.getArticlesByAuthor(decodedName),
+        apiService.getAuthorProfile(decodedName)
+      ]);
+      setAuthorArticles(articles);
+      setProfileData(profile);
+
       setLoading(false);
+
     };
-    fetchArticles();
+    fetchData();
   }, [decodedName]);
 
-  const profileInfo = AUTHOR_DATA[decodedName] || {
-    role: 'Colaborador do Blog',
-    bio: `Redator apaixonado por partilhar conhecimento e disseminar a literacia científica. ${decodedName} escreve sobre diversos tópicos com o objetivo de inspirar, educar e provocar reflexão nos leitores do Sussurros do Saber.`,
-    location: 'Mundo',
-    followers: 250,
-    reads: 1200,
-    instagram: '#',
-    linkedin: '#'
-  };
-
-  const authorProfile = {
-    name: decodedName,
-    role: profileInfo.role,
-    location: profileInfo.location,
-    joinedDate: 'Membro desde 2023',
-    bio: profileInfo.bio,
-    image: profileInfo.image,
+  // Fallback se não houver perfil no backend (usa dados básicos)
+  const safeProfile = {
+    name: profileData?.first_name ? `${profileData.first_name} ${profileData.last_name}`.trim() : decodedName,
+    role: profileData?.profile?.scientific_area || 'Investigador',
+    location: profileData?.profile?.institution || 'Instituição não informada',
+    joinedDate: profileData?.date_joined ? `Membro desde ${new Date(profileData.date_joined).getFullYear()}` : 'Membro da Comunidade',
+    bio: profileData?.profile?.bio || `Perfil de investigador de ${decodedName}.`,
+    image: profileData?.profile?.photo || null,
     social: {
-      instagram: profileInfo.instagram,
-      linkedin: profileInfo.linkedin
+      instagram: profileData?.profile?.instagram_url, // Se houver no futuro
+      linkedin: profileData?.profile?.linkedin_url,
+      researchgate: profileData?.profile?.research_gate_url,
+      orcid: profileData?.profile?.orcid_url
     },
     stats: {
       articles: authorArticles.length,
-      reads: profileInfo.reads + (authorArticles.length * 120),
-      followers: isFollowing ? profileInfo.followers + 1 : profileInfo.followers
-    }
+      reads: profileData?.stats?.reads || 0,
+      followers: profileData?.stats?.followers || 0,
+      karma: profileData?.stats?.karma || 0
+    },
+    badges: profileData?.profile?.badges || []
   };
 
-  const handleFollow = () => {
+  const authorProfile = safeProfile;
+
+  const handleFollow = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      setToast({ show: true, message: "Faça login para seguirautores." });
+      setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+      return;
+    }
+
     setIsAnimatingFollow(true);
     setTimeout(() => { setIsAnimatingFollow(false); }, 300);
-    const newState = !isFollowing;
-    setIsFollowing(newState);
-    localStorage.setItem(`follow_${decodedName}`, JSON.stringify(newState));
-    setToast({ show: true, message: newState ? `Você agora está seguindo ${decodedName}` : `Você deixou de seguir ${decodedName}` });
+
+    try {
+      if (isFollowing) {
+        await apiService.unfollowAuthor(decodedName, token);
+        setIsFollowing(false);
+        setToast({ show: true, message: `Você deixou de seguir ${decodedName}` });
+      } else {
+        await apiService.followAuthor(decodedName, token);
+        setIsFollowing(true);
+        setToast({ show: true, message: `Você agora está seguindo ${decodedName}` });
+      }
+    } catch (error) {
+      setToast({ show: true, message: "Erro ao atualizar seguidor." });
+    }
+
     setTimeout(() => { setToast(prev => ({ ...prev, show: false })); }, 3000);
   };
 
   const handleMessageOpen = () => { setShowMsgModal(true); setMsgSent(false); setMsgText(''); };
-  const handleSendMessage = (e: React.FormEvent) => {
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!msgText.trim()) return;
+
     setIsSending(true);
-    setTimeout(() => {
-      setIsSending(false);
+    try {
+      // Enviar para API
+      // Se user não logado, backend aceita mas precisamos de nome/email.
+      // O formulário abaixo foi atualizado para pedir isso se não houver token? 
+      // Para simplificar, vamos assumir que o modal pede ou pega do user logado.
+      // Vamos adicionar campos ao modal na UI
+
+      await apiService.sendMessageToAuthor(decodedName, {
+        name: msgName || 'Leitor Anônimo', // Idealmente viria de input
+        email: msgEmail || 'anonimo@leitor.com', // Idealmente viria de input
+        message: msgText
+      }, getAuthToken() || undefined);
+
       setMsgSent(true);
       setTimeout(() => { setShowMsgModal(false); }, 2000);
-    }, 1500);
+    } catch (error) {
+      alert("Erro ao enviar mensagem. Tente novamente.");
+    } finally {
+      setIsSending(false);
+    }
   };
-
   if (!decodedName) return <div className="min-h-screen flex items-center justify-center dark:bg-slate-950 dark:text-white">Autor não encontrado</div>;
 
   return (
@@ -159,9 +207,16 @@ const Author: React.FC = () => {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
                 <div>
                   {/* NAME WITH BLUE UNDERLINE AS PER IMAGE */}
-                  <h1 className="inline-block text-2xl md:text-3xl font-black text-brand-blue dark:text-white tracking-tight border-b-[3px] border-blue-100 dark:border-blue-900/50 pb-1 mb-2">
-                    {authorProfile.name}
-                  </h1>
+                  <div className="flex items-center gap-3">
+                    <h1 className="inline-block text-2xl md:text-3xl font-black text-brand-blue dark:text-white tracking-tight border-b-[3px] border-blue-100 dark:border-blue-900/50 pb-1 mb-2">
+                      {authorProfile.name}
+                    </h1>
+                    {authorProfile.badges.map((badge: any, i: number) => (
+                      <span key={i} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 ${badge.type === 'verified' ? 'bg-blue-50 text-brand-blue border border-blue-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`} title={badge.label}>
+                        <Award size={10} /> {badge.label}
+                      </span>
+                    ))}
+                  </div>
                   <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{authorProfile.role}</p>
                 </div>
 
@@ -217,6 +272,8 @@ const Author: React.FC = () => {
             <AnimatedCounter value={authorProfile.stats.reads} label="Visualizações" />
             <div className="hidden sm:block w-px bg-slate-200 dark:bg-slate-700 my-4"></div>
             <AnimatedCounter value={authorProfile.stats.followers} label="Seguidores" />
+            <div className="hidden sm:block w-px bg-slate-200 dark:bg-slate-700 my-4"></div>
+            <AnimatedCounter value={authorProfile.stats.karma} label="Reconhecimento" />
           </div>
         </div>
       </div>
@@ -240,10 +297,12 @@ const Author: React.FC = () => {
         ) : (
           <div className="text-center py-24 bg-white dark:bg-slate-900 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
             <BookOpen size={48} className="mx-auto text-slate-100 dark:text-slate-800 mb-6" />
-            <p className="text-slate-400 font-bold uppercase tracking-widest">Ainda não existem manuscritos indexados para este autor.</p>
+            <p className="text-slate-400 font-bold uppercase tracking-widest">Ainda não existem manuscritos indexados para "{decodedName}".</p>
+
             <Link to="/" className="inline-block mt-6 text-brand-blue font-black text-xs uppercase hover:underline">Explorar Portal</Link>
           </div>
         )}
+
       </div>
 
       {toast.show && (
@@ -263,7 +322,14 @@ const Author: React.FC = () => {
               <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
                 <MessageSquare size={20} className="text-brand-blue" /> Contactar Autor
               </h3>
-              <button onClick={() => setShowMsgModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={24} /></button>
+              <button
+                onClick={() => setShowMsgModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+                title="Fechar"
+                aria-label="Fechar modal"
+              >
+                <X size={24} />
+              </button>
             </div>
             <div className="p-8">
               {msgSent ? (
@@ -274,6 +340,32 @@ const Author: React.FC = () => {
                 </div>
               ) : (
                 <form onSubmit={handleSendMessage} className="space-y-6">
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Seu Nome</label>
+                      <input
+                        type="text"
+                        value={msgName}
+                        onChange={(e) => setMsgName(e.target.value)}
+                        placeholder="Ex: João Silva"
+                        className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-brand-blue outline-none text-slate-700 dark:text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Seu Email</label>
+                      <input
+                        type="email"
+                        value={msgEmail}
+                        onChange={(e) => setMsgEmail(e.target.value)}
+                        placeholder="email@exemplo.com"
+                        className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-brand-blue outline-none text-slate-700 dark:text-white"
+                        required
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Assunto ou Mensagem Académica</label>
                     <textarea

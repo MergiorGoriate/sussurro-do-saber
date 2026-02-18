@@ -1,2 +1,0 @@
-0 3 * * * /home/mergior/apps/sussurro-do-saber/backend/scripts/backup_db.sh >> /home/mergior/backups/backup.log 2>&1
-0 4 * * 0 echo "#mergior12" | sudo -S certbot renew --post-hook "cd /home/mergior/apps/sussurro-do-saber && docker-compose restart frontend" >> /home/mergior/backups/certbot_renew.log 2>&1

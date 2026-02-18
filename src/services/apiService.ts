@@ -1,34 +1,46 @@
 
 import { Article, Footnote } from "../types";
 
-const API_BASE_URL = 'http://127.0.0.1:5000/api';
+const API_BASE_URL = 'http://localhost:8000/api';
 
 export const apiService = {
   /**
-   * Busca artigos no servidor.
+   * Busca artigos no servidor com suporte a filtros e busca.
    */
   async getArticles(query?: string, category?: string): Promise<Article[]> {
     const params = new URLSearchParams();
-    if (query) params.append('q', query);
+    if (query) params.append('search', query);
     if (category) params.append('category', category);
 
-    const response = await fetch(`${API_BASE_URL}/articles?${params.toString()}`);
+    const response = await fetch(`${API_BASE_URL}/articles/?${params.toString()}&_t=${Date.now()}`);
     if (!response.ok) throw new Error('Failed to fetch articles');
-    return response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : data.results || [];
   },
 
   /**
-   * Busca um artigo por ID.
+   * Busca artigos de um autor específico pelo username.
    */
-  async getArticleById(id: string): Promise<Article> {
-    const response = await fetch(`${API_BASE_URL}/articles/${id}`);
+  async getArticlesByAuthor(username: string): Promise<Article[]> {
+    const response = await fetch(`${API_BASE_URL}/articles/?author__username=${encodeURIComponent(username)}&_t=${Date.now()}`);
+    if (!response.ok) throw new Error('Failed to fetch author articles');
+    const data = await response.json();
+    return Array.isArray(data) ? data : data.results || [];
+  },
+
+
+
+  /**
+   * Busca um artigo detalhado por seu Slug.
+   */
+  async getArticleById(slug: string): Promise<Article> {
+    const response = await fetch(`${API_BASE_URL}/articles/${slug}/`);
     if (!response.ok) throw new Error('Article not found');
     return response.json();
   },
 
   /**
-   * Busca semântica (agora delegada ao servidor se necessário, ou mantida local para performance).
-   * Para agora, usaremos o endpoint de articles com query.
+   * Busca semântica (delegada ao servidor via query parameter 'search').
    */
   async semanticSearch(query: string, articles: Article[]): Promise<Article[]> {
     if (!query) return articles;
@@ -36,11 +48,11 @@ export const apiService = {
   },
 
   /**
-   * Recomenda artigos com base na semântica (IA).
+   * Obtém artigos recomendados com base no slug do artigo atual.
    */
-  async getRecommendedArticles(articleId: string): Promise<Article[]> {
+  async getRecommendedArticles(slug: string): Promise<Article[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/articles/${articleId}/recommendations`);
+      const response = await fetch(`${API_BASE_URL}/articles/${slug}/recommendations/`);
       if (!response.ok) return [];
       return response.json();
     } catch (error) {
@@ -49,6 +61,9 @@ export const apiService = {
     }
   },
 
+  /**
+   * Factos científicos aleatórios (Front-end side).
+   */
   async getRandomScienceFact(): Promise<string> {
     const facts = [
       "O conhecimento acadêmico triplica a cada década nas ciências naturais.",
@@ -60,24 +75,21 @@ export const apiService = {
     return facts[Math.floor(Math.random() * facts.length)];
   },
 
-  async getAiInsight(content: string): Promise<string> {
-    const response = await fetch(`${API_BASE_URL}/ai/insight`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content })
-    });
-    const data = await response.json();
-    return data.insight;
-  },
 
-  async getArticleFootnotes(articleId: string): Promise<Footnote[]> {
-    const response = await fetch(`${API_BASE_URL}/articles/${articleId}/footnotes`);
+  /**
+   * Busca notas de rodapé de um artigo (Django Action).
+   */
+  async getArticleFootnotes(slug: string): Promise<Footnote[]> {
+    const response = await fetch(`${API_BASE_URL}/articles/${slug}/footnotes/`);
     if (!response.ok) return [];
     return response.json();
   },
 
-  async submitFootnoteSuggestion(articleId: string, footnote: Partial<Footnote>): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/articles/${articleId}/footnotes`, {
+  /**
+   * Submete uma sugestão de nota de rodapé (Django Action).
+   */
+  async submitFootnoteSuggestion(slug: string, footnote: Partial<Footnote>): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/articles/${slug}/footnotes/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(footnote)
@@ -85,31 +97,17 @@ export const apiService = {
     if (!response.ok) throw new Error('Failed to submit suggestion');
   },
 
-  async getArticleSummary(content: string): Promise<string> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/ai/summary`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
-      });
-      if (!response.ok) return '';
-      const data = await response.json();
-      return data.summary;
-    } catch (error) {
-      console.error("Summary fetch error:", error);
-      return '';
-    }
-  },
 
+  /**
+   * Obtém termos de glossário via IA (Django Backend).
+   */
   async getGlossaryTerms(content: string): Promise<{ term: string; definition: string }[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/ai/glossary`, {
+      const response = await fetch(`${API_BASE_URL}/ai/glossary/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content })
       });
-      if (!response.ok) return [];
-      return await response.json();
       if (!response.ok) return [];
       return await response.json();
     } catch (error) {
@@ -118,23 +116,32 @@ export const apiService = {
     }
   },
 
+  /**
+   * Lista nomes de categorias (Migrado para Django).
+   */
   async getCategories(): Promise<string[]> {
-    const response = await fetch(`${API_BASE_URL}/categories`);
+    const response = await fetch(`${API_BASE_URL}/categories/`);
     if (!response.ok) return [];
     return response.json();
   },
 
+  /**
+   * Lista nomes de tags das bibliotecas Python (Migrado para Django).
+   */
   async getTags(): Promise<string[]> {
-    const response = await fetch(`${API_BASE_URL}/tags`);
+    const response = await fetch(`${API_BASE_URL}/tags/`);
     if (!response.ok) return [];
     return response.json();
   },
 
+  /**
+   * Upload de imagem para o servidor (Media storage em Django).
+   */
   async uploadImage(file: File, token: string): Promise<{ url: string }> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/upload`, {
+    const response = await fetch(`${API_BASE_URL}/articles/upload_image/`, { // Ajustado para action de Article ou endpoint global
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -145,8 +152,8 @@ export const apiService = {
     return response.json();
   },
 
-  async indexArticle(articleId: string, token: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/ai/index_article/${articleId}`, {
+  async indexArticle(id: string, token: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/ai/indexer/${id}/`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -156,9 +163,91 @@ export const apiService = {
     return response.json();
   },
 
+
+
+  /**
+   * Insights globais do indexador.
+   */
   async getIndexerInsights(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/ai/indexer`);
+    const response = await fetch(`${API_BASE_URL}/ai/indexer/`);
     if (!response.ok) throw new Error('Failed to fetch indexer insights');
     return response.json();
+  },
+
+  /**
+   * Obtém o perfil completo de um autor via Username.
+   */
+  async getAuthorProfile(username: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/authors/${username}/`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error("Author profile fetch error:", error);
+      return null;
+    }
+  },
+
+  /**
+   * Envia uma mensagem para o autor (autenticado ou anônimo).
+   */
+  async sendMessageToAuthor(username: string, data: { name: string; email: string; message: string }, token?: string): Promise<void> {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/authors/${username}/send_message/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || 'Failed to send message');
+    }
+  },
+
+  /**
+   * Segue um autor (Requer Autenticação).
+   */
+  async followAuthor(username: string, token: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/authors/${username}/follow/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok && response.status !== 409) throw new Error('Failed to follow author');
+  },
+
+  /**
+   * Deixa de seguir um autor (Requer Autenticação).
+   */
+  async unfollowAuthor(username: string, token: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/authors/${username}/unfollow/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) throw new Error('Failed to unfollow author');
+  },
+
+  /**
+   * Verifica se o usuário atual segue o autor (Requer Autenticação).
+   */
+  async checkFollowStatus(username: string, token: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/authors/${username}/check_follow/`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      return data.following;
+    } catch (error) {
+      return false;
+    }
   }
 };

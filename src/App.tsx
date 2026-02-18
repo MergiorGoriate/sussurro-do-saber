@@ -22,7 +22,6 @@ const Favorites = lazy(() => import('./pages/Favorites'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfUse = lazy(() => import('./pages/TermsOfUse'));
 const AIResearch = lazy(() => import('./pages/AIResearch'));
-const Admin = lazy(() => import('./pages/Admin'));
 const RSSFeed = lazy(() => import('./pages/RSSFeed.tsx'));
 
 const ScrollToTop = () => {
@@ -38,6 +37,13 @@ const PageLoader = () => (
     <Loader2 className="w-10 h-10 text-brand-blue animate-spin" />
   </div>
 );
+
+const AdminRedirect = () => {
+  useEffect(() => {
+    window.location.href = 'http://localhost:8000/admin/';
+  }, []);
+  return <PageLoader />;
+};
 
 const App: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -62,11 +68,7 @@ const App: React.FC = () => {
       <ScrollToTop />
       <div className="flex flex-col min-h-screen bg-brand-light dark:bg-slate-950 font-sans transition-colors duration-300">
         <Routes>
-          <Route path="/admin" element={
-            <Suspense fallback={<PageLoader />}>
-              <Admin />
-            </Suspense>
-          } />
+          <Route path="/admin" element={<AdminRedirect />} />
 
           <Route path="*" element={
             <>

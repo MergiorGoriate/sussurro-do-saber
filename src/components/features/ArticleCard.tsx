@@ -22,7 +22,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
   const fallbackImage = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=60&w=800&auto=format&fit=crop";
 
   const baseUrl = window.location.href.split('#')[0];
-  const shareUrl = `${baseUrl}#/article/${article.id}`;
+  const shareUrl = `${baseUrl}#/article/${article.slug}`;
   const shareTitle = encodeURIComponent(article.title);
   const encodedUrl = encodeURIComponent(shareUrl);
 
@@ -75,7 +75,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
         <div className="flex flex-col md:flex-row gap-6">
 
           <div className="md:w-40 shrink-0">
-            <Link to={`/article/${article.id}`} className="block aspect-[4/3] md:aspect-square rounded-[20px] overflow-hidden bg-slate-100 dark:bg-slate-800 relative shadow-inner">
+            <Link to={`/article/${article.slug}`} className="block aspect-[4/3] md:aspect-square rounded-[20px] overflow-hidden bg-slate-100 dark:bg-slate-800 relative shadow-inner">
               <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/10 to-transparent z-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <img
                 src={imgError ? fallbackImage : article.imageUrl}
@@ -90,13 +90,15 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <span className="open-access-badge flex items-center gap-1 shadow-sm !py-0.5 !px-2 !text-[8px]">
-                <LockOpen size={8} /> Open Access
+                <LockOpen size={8} /> Acesso Livre
               </span>
-              <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{article.category}</span>
+              <Link to={`/?cat=${encodeURIComponent(article.category)}`} className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-brand-blue dark:hover:text-blue-400 transition-colors">
+                {article.category}
+              </Link>
             </div>
 
             <h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-white mb-2 leading-tight group-hover:text-brand-blue dark:group-hover:text-blue-400 transition-colors">
-              <Link to={`/article/${article.id}`}>
+              <Link to={`/article/${article.slug}`}>
                 {article.title}
               </Link>
             </h3>
@@ -105,7 +107,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
               {article.excerpt}
             </p>
 
-            <div className="flex items-center gap-2 mb-4">
+            <Link to={`/author/${encodeURIComponent(article.author_username || article.author)}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-slate-800">
                 {article.authorAvatarUrl ? (
                   <img src={article.authorAvatarUrl} alt="" className="w-full h-full object-cover" />
@@ -114,7 +116,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
                 )}
               </div>
               <span className="text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-tight">{article.author}</span>
-            </div>
+            </Link>
+
 
             <div className="mt-auto pt-4 border-t border-slate-50 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4 text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">
@@ -131,7 +134,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
                 >
                   <Share2 size={16} />
                 </button>
-                <Link to={`/article/${article.id}`} className="flex items-center gap-1 text-[9px] font-black text-brand-blue dark:text-blue-400 uppercase tracking-widest hover:translate-x-1 transition-transform">
+                <Link to={`/article/${article.slug}`} className="flex items-center gap-1 text-[9px] font-black text-brand-blue dark:text-blue-400 uppercase tracking-widest hover:translate-x-1 transition-transform">
                   Ler <ChevronRight size={12} />
                 </Link>
               </div>
@@ -148,17 +151,17 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
             onClick={() => setIsShareModalOpen(false)}
           ></div>
 
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl relative z-10 overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-            <div className="px-6 py-5 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
-              <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-xs flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[24px] shadow-2xl relative z-10 overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+            <div className="px-5 py-3 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30 backdrop-blur-md">
+              <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-[10px] flex items-center gap-2">
                 <Share2 size={14} className="text-brand-blue" /> Disseminar Conhecimento
               </h3>
               <button
                 onClick={() => setIsShareModalOpen(false)}
                 title="Fechar partilha"
-                className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/10"
+                className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/10 active:scale-95"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 

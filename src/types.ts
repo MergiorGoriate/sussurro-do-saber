@@ -38,11 +38,13 @@ export interface JournalMeta {
 export type ArticleStatus = 'published' | 'draft' | 'under_review' | 'scheduled' | 'archived';
 
 export interface Article {
-  id: string;
+  id: string | number;
   title: string;
   excerpt: string;
-  content: string;
+  content?: string;
   author: string;
+  author_username?: string;
+  author_badges?: { type: string; label: string }[];
   authorId?: string;
   authorAvatarUrl?: string;
   date: string;
@@ -60,6 +62,7 @@ export interface Article {
     metaDescription: string;
     keywords: string[];
   };
+  slug: string;
 }
 
 // BIG DATA TYPES

@@ -5,8 +5,10 @@ import { Link } from 'react-router-dom';
 import { storageService } from '../../services/storageService';
 import { BlogSettings } from '../../types';
 import { Brain, Facebook, Twitter, Instagram, Youtube, Linkedin, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const Footer: React.FC = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -58,12 +60,12 @@ const Footer: React.FC = () => {
               <span className="font-bold text-xl tracking-tight">Sussurros<span className="text-brand-blue">.</span></span>
             </Link>
             <p className="text-slate-400 text-sm leading-relaxed">
-              O seu portal diário para explorar a ciência, tecnologia e as curiosidades que moldam o nosso mundo. Conhecimento para mentes inquietas.
+              {t('footer.description')}
             </p>
           </div>
 
           <div>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6">Explorar</h3>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6">{t('footer.explore')}</h3>
             <ul className="space-y-3 text-sm text-slate-400">
               <li><Link to="/?cat=Ciência" className="hover:text-brand-blue transition-colors">Ciência</Link></li>
               <li><Link to="/?cat=Tecnologia" className="hover:text-brand-blue transition-colors">Tecnologia</Link></li>
@@ -73,13 +75,13 @@ const Footer: React.FC = () => {
           </div>
 
           <div>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6">Institucional</h3>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6">{t('footer.institutional')}</h3>
             <ul className="space-y-3 text-sm text-slate-400">
-              <li><Link to="/about" className="hover:text-brand-blue transition-colors">Sobre Nós</Link></li>
-              <li><Link to="/contact" className="hover:text-brand-blue transition-colors">Contacto</Link></li>
-              <li><Link to="/privacy" className="hover:text-brand-blue transition-colors">Privacidade</Link></li>
-              <li><Link to="/terms" className="hover:text-brand-blue transition-colors">Termos</Link></li>
-              <li><Link to="/admin" className="hover:text-brand-blue transition-colors">Administração</Link></li>
+              <li><Link to="/about" className="hover:text-brand-blue transition-colors">{t('nav.about')}</Link></li>
+              <li><Link to="/contact" className="hover:text-brand-blue transition-colors">{t('nav.contact')}</Link></li>
+              <li><Link to="/privacy" className="hover:text-brand-blue transition-colors">{t('footer.privacy')}</Link></li>
+              <li><Link to="/terms" className="hover:text-brand-blue transition-colors">{t('footer.terms')}</Link></li>
+              <li><Link to="/admin" className="hover:text-brand-blue transition-colors">{t('footer.admin')}</Link></li>
             </ul>
           </div>
 

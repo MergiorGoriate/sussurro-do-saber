@@ -30,13 +30,67 @@ interface SimpleMarkdownProps {
   glossaryTerms?: { term: string; definition: string }[];
 }
 
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line, Bar, Pie, Doughnut } from 'react-chartjs-2';
+
+// Register ChartJS modules
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
+const ChartRenderer: React.FC<{ type: string; data: any; options?: any }> = ({ type, data, options }) => {
+  const defaultOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          font: { weight: 'bold', size: 10 },
+          usePointStyle: true,
+        }
+      },
+    },
+    ...options
+  };
+
+  return (
+    <div className="w-full h-80 my-8 p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+      {type === 'line' && <Line data={data} options={defaultOptions} />}
+      {type === 'bar' && <Bar data={data} options={defaultOptions} />}
+      {type === 'pie' && <Pie data={data} options={defaultOptions} />}
+      {type === 'doughnut' && <Doughnut data={data} options={defaultOptions} />}
+    </div>
+  );
+};
+
 const SimpleMarkdown: React.FC<SimpleMarkdownProps> = ({ content, glossaryTerms = [] }) => {
   if (!content) return null;
 
   const parseWithGlossary = (text: string) => {
     if (!glossaryTerms || glossaryTerms.length === 0) return parseFormatting(text);
 
-    // Create a generic replacement token to avoid nested matching issues
     let parts: (string | React.ReactNode)[] = [text];
 
     glossaryTerms.forEach((item) => {
@@ -46,11 +100,8 @@ const SimpleMarkdown: React.FC<SimpleMarkdownProps> = ({ content, glossaryTerms 
       parts.forEach((part) => {
         if (typeof part === 'string') {
           const split = part.split(regex);
-          // If match found, the split array will have odd length (1: no match, 3+: match)
-          // index 0: text before, 1: match, 2: text after...
           if (split.length > 1) {
             split.forEach((str, i) => {
-              // Odd indices are the matches
               if (i % 2 === 1) {
                 newParts.push(
                   <GlossaryTooltip key={`${item.term}-${i}`} term={item.term} definition={item.definition}>
@@ -71,7 +122,6 @@ const SimpleMarkdown: React.FC<SimpleMarkdownProps> = ({ content, glossaryTerms 
       parts = newParts;
     });
 
-    // Finally apply formatting to string parts
     return parts.map((part, i) => {
       if (typeof part === 'string') {
         return <React.Fragment key={i}>{parseFormatting(part)}</React.Fragment>;
@@ -100,42 +150,91 @@ const SimpleMarkdown: React.FC<SimpleMarkdownProps> = ({ content, glossaryTerms 
     });
   };
 
+  // Track if we are inside a chart block
+  let inChart = false;
+  let chartType = '';
+  let chartDataStr = '';
+
+  const processedLines: React.ReactNode[] = [];
+  const lines = content.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    const key = `line-${i}`;
+
+    // Chart detection: [chart:type] ... [/chart]
+    if (trimmed.startsWith('[chart:')) {
+      inChart = true;
+      chartType = trimmed.substring(7, trimmed.length - 1);
+      chartDataStr = '';
+      continue;
+    }
+
+    if (inChart) {
+      if (trimmed === '[/chart]') {
+        inChart = false;
+        try {
+          const config = JSON.parse(chartDataStr);
+          processedLines.push(
+            <ChartRenderer key={key} type={chartType} data={config.data} options={config.options} />
+          );
+        } catch (e) {
+          processedLines.push(<div key={key} className="text-red-500 text-xs italic">Erro ao renderizar gráfico: JSON inválido</div>);
+        }
+        continue;
+      }
+      chartDataStr += line;
+      continue;
+    }
+
+    // Existing Markdown parsers
+    if (trimmed.startsWith('### ')) {
+      const text = trimmed.replace('### ', '');
+      processedLines.push(<h3 key={key} id={slugify(text)} className="text-lg md:text-xl font-black text-slate-900 dark:text-white mt-8 mb-3 scroll-mt-32 uppercase tracking-tight leading-none">{parseFormatting(text)}</h3>);
+      continue;
+    }
+    if (trimmed.startsWith('## ')) {
+      const text = trimmed.replace('## ', '');
+      processedLines.push(<h2 key={key} id={slugify(text)} className="text-xl md:text-2xl font-black text-brand-blue dark:text-blue-400 mt-10 mb-5 border-b border-slate-100 dark:border-slate-800 pb-3 scroll-mt-32 uppercase tracking-tight">{parseFormatting(text)}</h2>);
+      continue;
+    }
+    if (trimmed.startsWith('# ')) {
+      const text = trimmed.replace('# ', '');
+      processedLines.push(<h1 key={key} id={slugify(text)} className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mt-12 mb-6 scroll-mt-32 tracking-tighter">{parseFormatting(text)}</h1>);
+      continue;
+    }
+
+    if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+      processedLines.push(
+        <div key={key} className="flex gap-3 ml-3 mb-2.5">
+          <span className="text-brand-blue dark:text-blue-400 font-black mt-0.5 text-xl">•</span>
+          <span className="text-slate-700 dark:text-slate-300 font-serif text-sm md:text-base">{parseWithGlossary(trimmed.substring(2))}</span>
+        </div>
+      );
+      continue;
+    }
+
+    if (trimmed.startsWith('> ')) {
+      processedLines.push(
+        <blockquote key={key} className="border-l-4 border-brand-blue dark:border-blue-500 pl-6 py-4 my-8 bg-slate-50 dark:bg-slate-900/40 italic text-slate-800 dark:text-slate-200 text-lg md:text-xl font-serif rounded-r-2xl leading-relaxed">
+          {parseWithGlossary(trimmed.replace('> ', ''))}
+        </blockquote>
+      );
+      continue;
+    }
+
+    if (trimmed === '') {
+      processedLines.push(<div key={key} className="h-3" />);
+      continue;
+    }
+
+    processedLines.push(<p key={key} className="text-slate-700 dark:text-slate-300 mb-5 font-serif leading-relaxed text-justify hyphens-auto text-sm md:text-base">{parseWithGlossary(trimmed)}</p>);
+  }
+
   return (
     <div className="space-y-5 text-slate-800 dark:text-slate-200 leading-relaxed font-sans text-base md:text-lg">
-      {content.split('\n').map((line, index) => {
-        const key = `line-${index}`;
-        const trimmed = line.trim();
-
-        if (trimmed.startsWith('### ')) {
-          const text = trimmed.replace('### ', '');
-          // Headers usually don't have glossary terms to avoid complexity, but we could add if needed
-          return <h3 key={key} id={slugify(text)} className="text-lg md:text-xl font-black text-slate-900 dark:text-white mt-8 mb-3 scroll-mt-32">{parseFormatting(text)}</h3>;
-        }
-        if (trimmed.startsWith('## ')) {
-          const text = trimmed.replace('## ', '');
-          return <h2 key={key} id={slugify(text)} className="text-xl md:text-2xl font-black text-brand-blue dark:text-blue-400 mt-10 mb-5 border-b border-slate-100 dark:border-slate-800 pb-3 scroll-mt-32 uppercase tracking-tight">{parseFormatting(text)}</h2>;
-        }
-        if (trimmed.startsWith('# ')) {
-          const text = trimmed.replace('# ', '');
-          return <h1 key={key} id={slugify(text)} className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mt-12 mb-6 scroll-mt-32 tracking-tighter">{parseFormatting(text)}</h1>;
-        }
-
-        if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) return (
-          <div key={key} className="flex gap-3 ml-3 mb-2.5">
-            <span className="text-brand-blue dark:text-blue-400 font-black mt-0.5 text-xl">•</span>
-            <span className="text-slate-700 dark:text-slate-300 font-serif text-sm md:text-base">{parseWithGlossary(trimmed.substring(2))}</span>
-          </div>
-        );
-        if (trimmed.startsWith('> ')) return (
-          <blockquote key={key} className="border-l-4 border-brand-blue dark:border-blue-500 pl-6 py-4 my-8 bg-slate-50 dark:bg-slate-900/40 italic text-slate-800 dark:text-slate-200 text-lg md:text-xl font-serif rounded-r-2xl leading-relaxed">
-            {parseWithGlossary(trimmed.replace('> ', ''))}
-          </blockquote>
-        );
-
-        if (trimmed === '') return <div key={key} className="h-3" />;
-
-        return <p key={key} className="text-slate-700 dark:text-slate-300 mb-5 font-serif leading-relaxed text-justify hyphens-auto text-sm md:text-base">{parseWithGlossary(trimmed)}</p>;
-      })}
+      {processedLines}
     </div>
   );
 };

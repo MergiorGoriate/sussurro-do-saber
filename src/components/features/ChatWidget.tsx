@@ -80,7 +80,7 @@ const ChatWidget: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/ai/chat`, {
+      const response = await fetch(`http://localhost:8000/api/ai/chat/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -177,7 +177,7 @@ const ChatWidget: React.FC = () => {
               <button type="submit" disabled={!input.trim() || isLoading} title="Enviar Mensagem" className="absolute right-2 p-2 sm:p-2.5 bg-brand-blue text-white rounded-lg sm:rounded-xl hover:bg-brand-dark transition-all disabled:opacity-30 active:scale-95"><Send size={18} /></button>
             </form>
             <div className="mt-3 text-center">
-              <p className="text-[9px] text-gray-400 dark:text-slate-600 font-black uppercase tracking-[0.2em] flex items-center justify-center gap-1.5"><Sparkles size={10} className="text-brand-blue" /> Motor NLP por Gemini 1.5</p>
+              <p className="text-[9px] text-gray-400 dark:text-slate-600 font-black uppercase tracking-[0.2em] flex items-center justify-center gap-1.5"><Sparkles size={10} className="text-brand-blue" /> Motor NLP por Gemini 2.0</p>
             </div>
           </div>
         </div>

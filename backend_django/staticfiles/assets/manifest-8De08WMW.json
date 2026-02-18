@@ -1,0 +1,24 @@
+{
+  "name": "Sussurros do Saber",
+  "short_name": "Sussurros",
+  "description": "Um blog dedicado à disseminação do conhecimento científico, académico e cultural.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#053061",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://69697dc3356a14887c615411.imgix.net/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://69697dc3356a14887c615411.imgix.net/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

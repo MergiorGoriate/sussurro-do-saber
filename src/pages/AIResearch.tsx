@@ -18,7 +18,7 @@ const AIResearch: React.FC = () => {
     setStatus('loading');
     try {
       const result = await generateBlogContent(topic, type);
-      
+
       const newArticle: Article = {
         id: `ai-${Date.now()}`,
         title: result.title,
@@ -33,14 +33,15 @@ const AIResearch: React.FC = () => {
         likes: 0,
         views: 0,
         metrics: { citations: 0, altmetricScore: 0, viewCount: 0, downloadCount: 0 },
-        journalMeta: { 
-          doi: `10.3390/ai${Date.now()}`, 
-          issn: '2024-AI', 
-          volume: 1, 
-          issue: 1, 
-          receivedDate: new Date().toISOString(), 
-          acceptedDate: new Date().toLocaleDateString() 
-        }
+        journalMeta: {
+          doi: `10.3390/ai${Date.now()}`,
+          issn: '2024-AI',
+          volume: 1,
+          issue: 1,
+          receivedDate: new Date().toISOString(),
+          acceptedDate: new Date().toLocaleDateString()
+        },
+        slug: `ai-research-${Date.now()}`
       };
 
       navigate(`/article/${newArticle.id}`, { state: newArticle });
@@ -66,7 +67,7 @@ const AIResearch: React.FC = () => {
 
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
         <form onSubmit={handleGenerate} className="space-y-8">
-          
+
           <div className="space-y-4">
             <label className="block text-sm font-medium text-gray-700 uppercase tracking-wide">
               O que deseja explorar hoje?
@@ -85,11 +86,10 @@ const AIResearch: React.FC = () => {
             <button
               type="button"
               onClick={() => setType('explanation')}
-              className={`p-6 rounded-xl border-2 text-left transition-all duration-200 group ${
-                type === 'explanation'
+              className={`p-6 rounded-xl border-2 text-left transition-all duration-200 group ${type === 'explanation'
                   ? 'border-brand-blue bg-[#E0F2FE] ring-1 ring-[#0033aa]/20 scale-[1.02] shadow-md'
                   : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-[#E0F2FE]/30 hover:shadow-md hover:scale-[1.01]'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3 mb-2">
                 <BookOpen className={`w-5 h-5 ${type === 'explanation' ? 'text-[#0033aa]' : 'text-gray-400 group-hover:text-[#0033aa]'}`} />
@@ -105,11 +105,10 @@ const AIResearch: React.FC = () => {
             <button
               type="button"
               onClick={() => setType('essay')}
-              className={`p-6 rounded-xl border-2 text-left transition-all duration-200 group ${
-                type === 'essay'
+              className={`p-6 rounded-xl border-2 text-left transition-all duration-200 group ${type === 'essay'
                   ? 'border-brand-blue bg-[#E0F2FE] ring-1 ring-[#0033aa]/20 scale-[1.02] shadow-md'
                   : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-[#E0F2FE]/30 hover:shadow-md hover:scale-[1.01]'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3 mb-2">
                 <PenTool className={`w-5 h-5 ${type === 'essay' ? 'text-[#0033aa]' : 'text-gray-400 group-hover:text-[#0033aa]'}`} />
