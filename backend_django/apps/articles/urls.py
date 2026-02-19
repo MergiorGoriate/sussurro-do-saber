@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (ArticleViewSet, CategoryViewSet, CommentViewSet, 
                     FootnoteViewSet, TagListView, SubscriberViewSet,
                     AIInsightView, AISummaryView, AIGlossaryView, AIChatView,
-                    AIIndexerInsightsView, AuthorViewSet,
+                    AIIndexerInsightsView, AuthorViewSet, BookmarkViewSet,
                     SemanticSearchView, RecommendationView)
 
 
@@ -14,6 +14,7 @@ router.register(r'comments', CommentViewSet)
 router.register(r'footnotes', FootnoteViewSet)
 router.register(r'subscribers', SubscriberViewSet)
 router.register(r'authors', AuthorViewSet)
+router.register(r'bookmarks', BookmarkViewSet, basename='bookmarks')
 
 urlpatterns = [
     path('', include(router.urls)),

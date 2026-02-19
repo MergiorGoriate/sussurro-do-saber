@@ -13,6 +13,9 @@ import {
 import { Article, Comment, Footnote, FootnoteType } from '../types';
 import SimpleMarkdown from '../components/ui/SimpleMarkdown';
 import { useTranslation } from 'react-i18next';
+import { useFollow } from '../hooks/useFollow';
+import { useArticleRealtime } from '../hooks/useArticleRealtime';
+import AuthModal from '../components/auth/AuthModal';
 
 const ArticleView: React.FC = () => {
   const { t } = useTranslation();
@@ -23,6 +26,10 @@ const ArticleView: React.FC = () => {
   const [article, setArticle] = useState<Article | undefined>(location.state as Article);
   const [recommendations, setRecommendations] = useState<Article[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
+
+  const { isFollowing, handleFollow, isAuthModalOpen, closeAuthModal, onAuthSuccess } = useFollow(article?.author_username || article?.author || '');
+  const { views } = useArticleRealtime(id, article?.views);
+
   const [isLoading, setIsLoading] = useState(!location.state);
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -308,6 +315,16 @@ const ArticleView: React.FC = () => {
                 </div>
                 {article.author}
               </Link>
+
+              <button
+                onClick={() => {
+                  console.log('[ArticleView] Follow button clicked');
+                  handleFollow();
+                }}
+                className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${isFollowing ? 'bg-slate-100 dark:bg-slate-800 text-brand-blue dark:text-blue-400' : 'bg-brand-blue text-white hover:bg-brand-dark'}`}
+              >
+                {isFollowing ? 'Seguindo' : 'Seguir'}
+              </button>
               {article.author_badges && article.author_badges.map((badge: any, i: number) => (
                 <span key={i} className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${badge.type === 'verified' ? 'bg-blue-50 text-brand-blue border border-blue-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`} title={badge.label}>
                   <Award size={10} /> {badge.label}
@@ -315,6 +332,11 @@ const ArticleView: React.FC = () => {
               ))}
               <div className="flex items-center gap-2.5"><Calendar size={14} /> {article.date}</div>
               <div className="flex items-center gap-2.5"><Clock size={14} /> {article.readTime} min de leitura</div>
+
+              {/* UPDATED VIEWS DISPLAY */}
+              <div className="flex items-center gap-2.5 text-slate-900 dark:text-slate-100" title="Visualizações em tempo real">
+                <User size={14} className="text-slate-400" /> {views.toLocaleString()} views
+              </div>
               <div className="hidden md:block ml-auto font-mono text-[10px] opacity-40">DOI: 10.3390/ss{article.id}</div>
             </div>
 
@@ -733,6 +755,12 @@ const ArticleView: React.FC = () => {
           </div>
         </div>
       )}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={closeAuthModal}
+        onSuccess={onAuthSuccess}
+        intentText={`Para seguir ${article?.author}, crie a sua conta em segundos.`}
+      />
     </div>
   );
 };

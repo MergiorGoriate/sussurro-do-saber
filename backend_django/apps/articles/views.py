@@ -3,15 +3,17 @@ from rest_framework.decorators import action, permission_classes, authentication
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Article, Category, Comment, Footnote, Subscriber, AuthorMessage, AuthorFollower
+from .models import Article, Category, Comment, Footnote, Subscriber, AuthorMessage, AuthorFollower, Bookmark, UserLike
 from .serializers import (ArticleListSerializer, 
                             ArticleDetailSerializer, 
                             CategorySerializer, 
                             CommentSerializer,
                             FootnoteSerializer,
                             SubscriberSerializer,
-                            AuthorMessageSerializer,
-                            AuthorFollowerSerializer)
+                            AuthorMessageSerializer, 
+                            AuthorFollowerSerializer,
+                            BookmarkSerializer,
+                            AuthorSerializer)
 from .utils import (generate_ai_insight, 
                     generate_ai_summary, 
                     generate_ai_glossary, 
@@ -74,7 +76,6 @@ class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
 
 
     def get_object(self):
-
         """
         Busca robusta por ID (pk) ou Slug.
         Ignora complexidades do ViewSet para garantir recuperação direta.
@@ -104,18 +105,37 @@ class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
     
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        # Incrementar contador de visualizações (safely handle None)
-        instance.views = (instance.views or 0) + 1
-        instance.save(update_fields=['views'])
+        # Incrementar contador de visualizações (Atomic update to avoid hangs)
+        from django.db.models import F
+        Article.objects.filter(id=instance.id).update(views=F('views') + 1)
+        
+        instance.refresh_from_db()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['get', 'post'])
     def like(self, request, slug=None):
+        from django.db.models import F
         article = self.get_object()
-        article.likes += 1
-        article.save(update_fields=['likes'])
-        return Response({'likes': article.likes, 'id': article.slug})
+        user = request.user
+        
+        if user.is_authenticated:
+            like_obj = UserLike.objects.filter(user=user, article=article).first()
+            if like_obj:
+                like_obj.delete()
+                Article.objects.filter(id=article.id).update(likes=F('likes') - 1)
+                article.refresh_from_db()
+                return Response({'likes': article.likes, 'liked': False})
+            else:
+                UserLike.objects.create(user=user, article=article)
+                Article.objects.filter(id=article.id).update(likes=F('likes') + 1)
+                article.refresh_from_db()
+                return Response({'likes': article.likes, 'liked': True})
+        else:
+            # Anonymous Increment
+            Article.objects.filter(id=article.id).update(likes=F('likes') + 1)
+            article.refresh_from_db()
+            return Response({'likes': article.likes})
 
     @action(detail=True, methods=['get', 'post'])
     def comments(self, request, slug=None):
@@ -331,17 +351,6 @@ class AIIndexerInsightsView(APIView):
 
 
 from django.contrib.auth.models import User
-from .serializers import AuthorSerializer
-
-from .models import Article, Category, Comment, Footnote, Subscriber, AuthorMessage, AuthorFollower
-from .serializers import (ArticleListSerializer, 
-                            ArticleDetailSerializer, 
-                            CategorySerializer, 
-                            CommentSerializer,
-                            FootnoteSerializer,
-                            SubscriberSerializer,
-                            AuthorMessageSerializer,
-                            AuthorFollowerSerializer)
 
 # ... (omitted imports)
 
@@ -354,13 +363,42 @@ class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AuthorSerializer
     lookup_field = 'username'
     permission_classes = [permissions.AllowAny]
-    authentication_classes = []
 
     def get_object(self):
         queryset = self.filter_queryset(self.get_queryset())
         lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
-        filter_kwargs = {f"{self.lookup_field}__iexact": self.kwargs[lookup_url_kwarg]}
-        obj = get_object_or_404(queryset, **filter_kwargs)
+        identifier = self.kwargs[lookup_url_kwarg].strip()
+
+        # Prioridade 1: Match EXATO (Crucial para SQLite + Acentos)
+        obj = queryset.filter(username=identifier).first()
+        
+        # Prioridade 2: Username iexact (Fallback para sem acentos ou outros DBs)
+        if not obj:
+            obj = queryset.filter(username__iexact=identifier).first()
+        
+        if not obj:
+            # Prioridade 3: Email exato
+            obj = queryset.filter(email__iexact=identifier).first()
+            
+        if not obj:
+            # Prioridade 4: Nome Completo (Primeiro + Último)
+            parts = identifier.split(' ')
+            if len(parts) >= 2:
+                first = parts[0]
+                last = " ".join(parts[1:])
+                # Tenta exact e depois iexact para o nome
+                obj = queryset.filter(first_name=first, last_name=last).first()
+                if not obj:
+                    obj = queryset.filter(first_name__iexact=first, last_name__iexact=last).first()
+                
+                if not obj:
+                    # Match relaxado: primeiro e último token
+                    obj = queryset.filter(first_name__iexact=first, last_name__iexact=parts[-1]).first()
+
+        if not obj:
+            from django.http import Http404
+            raise Http404
+
         self.check_object_permissions(self.request, obj)
         return obj
 
@@ -374,7 +412,7 @@ class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated], authentication_classes=[authentication.TokenAuthentication, authentication.SessionAuthentication])
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def follow(self, request, username=None):
         author = self.get_object()
         user = request.user
@@ -391,7 +429,7 @@ class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
         )
         return Response({'detail': 'Agora você segue este autor.', 'following': True}, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated], authentication_classes=[authentication.TokenAuthentication, authentication.SessionAuthentication])
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def unfollow(self, request, username=None):
         author = self.get_object()
         user = request.user
@@ -402,11 +440,59 @@ class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'detail': 'Deixou de seguir este autor.', 'following': False}, status=status.HTTP_200_OK)
         return Response({'detail': 'Você não segue este autor.'}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated], authentication_classes=[authentication.TokenAuthentication, authentication.SessionAuthentication])
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def check_follow(self, request, username=None):
         author = self.get_object()
         user = request.user
         is_following = AuthorFollower.objects.filter(author=author, follower_email=user.email).exists()
         return Response({'following': is_following})
+
+
+class BookmarkViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gerir bookmarks (favoritos) do utilizador.
+    """
+    serializer_class = BookmarkSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Bookmark.objects.filter(user=self.request.user).select_related('article')
+
+    def create(self, request, *args, **kwargs):
+        article_id = request.data.get('article_id')
+        if not article_id:
+             return Response({'error': 'Article ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Prevent duplicates
+        existing = Bookmark.objects.filter(user=request.user, article_id=article_id).first()
+        if existing:
+            return Response(BookmarkSerializer(existing).data, status=status.HTTP_200_OK)
+
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['post'])
+    def toggle(self, request):
+        """Toggle bookmark status for an article"""
+        article_id = request.data.get('article_id')
+        if not article_id:
+            return Response({'error': 'Article ID required'}, status=400)
+            
+        # Robust lookup: ID or Slug
+        from django.db.models import Q
+        if str(article_id).isdigit():
+            article = get_object_or_404(Article, id=article_id)
+        else:
+            article = get_object_or_404(Article, slug=article_id)
+            
+        bookmark = Bookmark.objects.filter(user=request.user, article=article).first()
+        if bookmark:
+            bookmark.delete()
+            return Response({'bookmarked': False})
+        else:
+            Bookmark.objects.create(user=request.user, article=article)
+            return Response({'bookmarked': True})
 
 

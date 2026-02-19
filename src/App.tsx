@@ -9,6 +9,8 @@ import ChatWidget from './components/features/ChatWidget';
 import { ScrollToTopButton } from './components/ui/ScrollToTopButton';
 import { Loader2 } from 'lucide-react';
 import Home from './pages/Home';
+import { AuthProvider } from './context/AuthContext';
+import { Toaster } from 'sonner';
 
 // Lazy load pages
 const ArticleView = lazy(() => import('./pages/ArticleView'));
@@ -23,6 +25,8 @@ const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfUse = lazy(() => import('./pages/TermsOfUse'));
 const AIResearch = lazy(() => import('./pages/AIResearch'));
 const RSSFeed = lazy(() => import('./pages/RSSFeed.tsx'));
+const Library = lazy(() => import('./pages/Library'));
+const PublicationDetail = lazy(() => import('./pages/PublicationDetail'));
 
 const ScrollToTop = () => {
   const { pathname, search } = useLocation();
@@ -45,6 +49,8 @@ const AdminRedirect = () => {
   return <PageLoader />;
 };
 
+const AuthCallback = lazy(() => import('./pages/AuthCallback'));
+
 const App: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('sussurros_theme');
@@ -64,44 +70,53 @@ const App: React.FC = () => {
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
 
   return (
-    <Router>
-      <ScrollToTop />
-      <div className="flex flex-col min-h-screen bg-brand-light dark:bg-slate-950 font-sans transition-colors duration-300">
-        <Routes>
-          <Route path="/admin" element={<AdminRedirect />} />
+    <AuthProvider>
+      <Router>
+        <ScrollToTop />
+        <Toaster position="top-center" richColors />
+        <div className="flex flex-col min-h-screen bg-brand-light dark:bg-slate-950 font-sans transition-colors duration-300">
+          <Routes>
+            <Route path="/admin" element={<AdminRedirect />} />
 
-          <Route path="*" element={
-            <>
-              <Navbar theme={theme} onToggleTheme={toggleTheme} />
-              <main className="flex-grow">
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/article/:id" element={<ArticleView />} />
-                    <Route path="/author/:name" element={<Author />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="/educadicas" element={<Educadicas />} />
-                    <Route path="/resources" element={<Resources />} />
-                    <Route path="/favorites" element={<Favorites />} />
-                    <Route path="/lab" element={<AIResearch />} />
-                    <Route path="/quiz" element={<QuizPage />} />
-                    <Route path="/rss" element={<RSSFeed />} />
-                    <Route path="/privacy" element={<PrivacyPolicy />} />
-                    <Route path="/terms" element={<TermsOfUse />} />
-                  </Routes>
-                </Suspense>
-              </main>
-              <Footer />
-              <CookieConsent />
-              <SubscriptionAlert />
-              <ChatWidget />
-              <ScrollToTopButton />
-            </>
-          } />
-        </Routes>
-      </div>
-    </Router>
+            {/* Auth Callbacks - Clean layout */}
+            <Route path="/auth/callback/google" element={<Suspense fallback={<PageLoader />}><AuthCallback /></Suspense>} />
+            <Route path="/auth/callback/apple" element={<Suspense fallback={<PageLoader />}><AuthCallback /></Suspense>} />
+
+            <Route path="*" element={
+              <>
+                <Navbar theme={theme} onToggleTheme={toggleTheme} />
+                <main className="flex-grow">
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/article/:id" element={<ArticleView />} />
+                      <Route path="/author/:name" element={<Author />} />
+                      <Route path="/about" element={<About />} />
+                      <Route path="/contact" element={<Contact />} />
+                      <Route path="/educadicas" element={<Educadicas />} />
+                      <Route path="/resources" element={<Resources />} />
+                      <Route path="/biblioteca" element={<Library />} />
+                      <Route path="/biblioteca/:slug" element={<PublicationDetail />} />
+                      <Route path="/favorites" element={<Favorites />} />
+                      <Route path="/lab" element={<AIResearch />} />
+                      <Route path="/quiz" element={<QuizPage />} />
+                      <Route path="/rss" element={<RSSFeed />} />
+                      <Route path="/privacy" element={<PrivacyPolicy />} />
+                      <Route path="/terms" element={<TermsOfUse />} />
+                    </Routes>
+                  </Suspense>
+                </main>
+                <Footer />
+                <CookieConsent />
+                <SubscriptionAlert />
+                <ChatWidget />
+                <ScrollToTopButton />
+              </>
+            } />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 };
 

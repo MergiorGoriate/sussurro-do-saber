@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.utils.html import format_html
+from django.utils.html import format_html, mark_safe
 from django.utils import timezone
 from .models import Article, Category, Comment, Footnote, Subscriber, Profile, AuthorMessage, AuthorFollower, ReviewRequest
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
@@ -106,7 +106,7 @@ class ArticleAdmin(SimpleHistoryAdmin, ModelAdmin):
                 obj.cover_image.url
             )
         # Fallback para quando não há imagem
-        return format_html(
+        return mark_safe(
             '<div class="w-16 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-300 border border-slate-200">'
             '<i class="material-symbols-outlined" style="font-size: 20px;">image</i>'
             '</div>'
@@ -188,6 +188,11 @@ class ArticleAdmin(SimpleHistoryAdmin, ModelAdmin):
         updated = queryset.update(status='archived')
         self.message_user(request, f"{updated} artigo(s) arquivados.", level='warning')
     archive_articles.short_description = "Arquivar artigos"
+
+    def mark_as_draft(self, request, queryset):
+        updated = queryset.update(status='draft')
+        self.message_user(request, f"{updated} artigo(s) movidos para rascunhos.", level='info')
+    mark_as_draft.short_description = "Marcar como rascunho"
     
     actions = [
         'publish_articles', 

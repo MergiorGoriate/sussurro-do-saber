@@ -25,6 +25,6 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    base: '/static/',
+    base: mode === 'development' ? '/' : '/static/',
   };
 });

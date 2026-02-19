@@ -1,7 +1,7 @@
 
 import { Article, Footnote } from "../types";
 
-const API_BASE_URL = 'http://localhost:8000/api';
+export const API_BASE_URL = 'http://localhost:8000/api';
 
 export const apiService = {
   /**
@@ -179,7 +179,7 @@ export const apiService = {
    */
   async getAuthorProfile(username: string): Promise<any> {
     try {
-      const response = await fetch(`${API_BASE_URL}/authors/${username}/`);
+      const response = await fetch(`${API_BASE_URL}/authors/${encodeURIComponent(username)}/`);
       if (!response.ok) return null;
       return await response.json();
     } catch (error) {
@@ -195,7 +195,7 @@ export const apiService = {
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const response = await fetch(`${API_BASE_URL}/authors/${username}/send_message/`, {
+    const response = await fetch(`${API_BASE_URL}/authors/${encodeURIComponent(username)}/send_message/`, {
       method: 'POST',
       headers,
       body: JSON.stringify(data)
@@ -210,7 +210,7 @@ export const apiService = {
    * Segue um autor (Requer Autenticação).
    */
   async followAuthor(username: string, token: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/authors/${username}/follow/`, {
+    const response = await fetch(`${API_BASE_URL}/authors/${encodeURIComponent(username)}/follow/`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -224,7 +224,7 @@ export const apiService = {
    * Deixa de seguir um autor (Requer Autenticação).
    */
   async unfollowAuthor(username: string, token: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/authors/${username}/unfollow/`, {
+    const response = await fetch(`${API_BASE_URL}/authors/${encodeURIComponent(username)}/unfollow/`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -239,7 +239,7 @@ export const apiService = {
    */
   async checkFollowStatus(username: string, token: string): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/authors/${username}/check_follow/`, {
+      const response = await fetch(`${API_BASE_URL}/authors/${encodeURIComponent(username)}/check_follow/`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -249,5 +249,76 @@ export const apiService = {
     } catch (error) {
       return false;
     }
+  },
+
+  /**
+   * Obtém a lista de artigos favoritados (Requer Autenticação).
+   */
+  async getBookmarks(token: string): Promise<Article[]> {
+    const response = await fetch(`${API_BASE_URL}/bookmarks/`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    // A API retorna uma lista de objetos Bookmark que contêm o artigo aninhado
+    return data.map((b: any) => b.article);
+  },
+
+  /**
+   * Alterna o estado de favorito de um artigo (Requer Autenticação).
+   * Retorna true se foi adicionado, false se removido.
+   */
+  async toggleBookmark(articleId: string, token: string): Promise<boolean> {
+    const response = await fetch(`${API_BASE_URL}/bookmarks/toggle/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ article_id: articleId })
+    });
+
+    if (!response.ok) throw new Error('Failed to toggle bookmark');
+    const data = await response.json();
+    return data.bookmarked;
+  },
+
+  /**
+   * Alterna o estado de Like de um artigo.
+   * Se token estiver presente, faz toggle no servidor.
+   */
+  async toggleLike(slug: string, token?: string): Promise<{ likes: number; liked: boolean }> {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/articles/${slug}/like/`, {
+      method: 'POST',
+      headers
+    });
+
+    if (!response.ok) throw new Error('Failed to toggle like');
+    return response.json();
+  },
+
+  async get(endpoint: string, options: any = {}) {
+    const params = options.params ? `?${new URLSearchParams(options.params).toString()}` : '';
+    const response = await fetch(`${API_BASE_URL}${endpoint}${params}`);
+    if (!response.ok) throw new Error(`GET ${endpoint} failed`);
+    const data = await response.json();
+    return { data };
+  },
+
+  async post(endpoint: string, body: any, options: any = {}) {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) throw new Error(`POST ${endpoint} failed`);
+    const data = await response.json();
+    return { data };
   }
 };
+
+export default apiService;

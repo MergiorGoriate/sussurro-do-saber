@@ -5,7 +5,7 @@ import { apiService } from './apiService';
 const STORAGE_KEYS = {
   DB: 'sussurros_journal_db_v5',
   INTERACTIONS: 'sussurros_user_stats_v2',
-  AUTH: 'sussurros_auth_token',
+  AUTH: 'accessToken',
   USER: 'sussurros_user_data'
 };
 
@@ -72,19 +72,28 @@ class JournalBackend {
 
   public async toggleLike(id: string): Promise<boolean> {
     const safeId = String(id);
-    const response = await fetch(`http://localhost:8000/api/articles/${safeId}/like/`, { method: 'POST' });
-    if (!response.ok) return false;
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH) || undefined;
 
-    // Sync locally
-    const stats = this.getUserInteractions();
-    const idx = stats.likedArticles.indexOf(safeId);
-    if (idx === -1) {
-      stats.likedArticles.push(safeId);
-    } else {
-      stats.likedArticles.splice(idx, 1);
+    try {
+      const result = await apiService.toggleLike(safeId, token);
+
+      // Sync locally
+      const stats = this.getUserInteractions();
+      const idx = stats.likedArticles.indexOf(safeId);
+
+      if (result.liked) {
+        if (idx === -1) stats.likedArticles.push(safeId);
+      } else {
+        if (idx !== -1) stats.likedArticles.splice(idx, 1);
+      }
+
+      localStorage.setItem(STORAGE_KEYS.INTERACTIONS, JSON.stringify(stats));
+      window.dispatchEvent(new Event('storage-update'));
+      return result.liked;
+    } catch (e) {
+      console.error("Failed to toggle like", e);
+      return false;
     }
-    localStorage.setItem(STORAGE_KEYS.INTERACTIONS, JSON.stringify(stats));
-    return true;
   }
 
   public async addSubscriber(email: string): Promise<boolean> {
@@ -165,6 +174,30 @@ class JournalBackend {
 
   public async toggleBookmark(id: string): Promise<boolean> {
     const safeId = String(id);
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH);
+
+    if (token) {
+      try {
+        const result = await apiService.toggleBookmark(safeId, token);
+        // Optimistic update local storage too
+        const stats = this.getUserInteractions();
+        if (result) {
+          if (!stats.bookmarkedArticles.includes(safeId)) stats.bookmarkedArticles.push(safeId);
+        } else {
+          // Remove if present (could be slug or ID)
+          const idx = stats.bookmarkedArticles.indexOf(safeId);
+          if (idx !== -1) stats.bookmarkedArticles.splice(idx, 1);
+        }
+        localStorage.setItem(STORAGE_KEYS.INTERACTIONS, JSON.stringify(stats));
+        window.dispatchEvent(new Event('storage-update'));
+        return result;
+      } catch (e) {
+        console.error("Failed to toggle cloud bookmark", e);
+        return false;
+      }
+    }
+
+    // Local-only toggle (Offline/Guest)
     const stats = this.getUserInteractions();
     const idx = stats.bookmarkedArticles.indexOf(safeId);
     let result = false;

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Article, Category, Comment, Footnote, Subscriber
+from .models import Article, Category, Comment, Footnote, Subscriber, Bookmark
 
 from taggit.serializers import (TagListSerializerField,
                                 TaggitSerializer)
@@ -138,6 +138,19 @@ class AuthorFollowerSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuthorFollower
         fields = ['follower_email']
+
+class BookmarkSerializer(serializers.ModelSerializer):
+    article = ArticleListSerializer(read_only=True)
+    article_id = serializers.PrimaryKeyRelatedField(
+        source='article', 
+        queryset=Article.objects.all(), 
+        write_only=True
+    )
+
+    class Meta:
+        model = Bookmark
+        fields = ['id', 'user', 'article', 'article_id', 'created_at']
+        read_only_fields = ['user', 'created_at']
 
 class AuthorSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)

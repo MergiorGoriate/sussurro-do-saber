@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, Menu, X, Brain, Book, Home, Mail, HelpCircle, ArrowRight, Lightbulb, Loader2, Bookmark, Sun, Moon, FileDown, Languages } from 'lucide-react';
+import { Search, ChevronDown, Menu, X, Brain, Book, Home, Mail, HelpCircle, ArrowRight, Lightbulb, Loader2, Bookmark, Sun, Moon, FileDown, Languages, BookOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { storageService } from '../../services/storageService';
 import { Article } from '../../types';
@@ -229,7 +229,7 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
               <Link to="/quiz" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap ${location.pathname === '/quiz' ? 'bg-white/10' : ''}`}>{t('nav.quiz')}</Link>
               <Link to="/educadicas" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap ${location.pathname === '/educadicas' ? 'bg-white/10' : ''}`}>{t('nav.educadicas')}</Link>
               <Link to="/favorites" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${location.pathname === '/favorites' ? 'bg-white/10' : ''}`}><Bookmark size={16} className={location.pathname === '/favorites' ? 'fill-current' : ''} /> {t('nav.favorites')}</Link>
-              <Link to="/resources" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${location.pathname === '/resources' ? 'bg-white/10' : ''}`}><FileDown size={16} /> {t('nav.resources')}</Link>
+              <Link to="/biblioteca" className={`px-3 lg:px-4 py-2 text-sm font-bold hover:bg-white/10 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${location.pathname === '/biblioteca' ? 'bg-white/10' : ''}`}><Book size={16} /> Biblioteca</Link>
             </div>
           </div>
           <div className="flex items-center relative ml-4 shrink-0" ref={searchContainerRef}>
@@ -251,7 +251,7 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
               <Link to="/quiz" onClick={() => setIsOpen(false)} className="flex flex-col items-center justify-center p-4 bg-purple-50/50 dark:bg-slate-900 rounded-xl hover:bg-purple-50 active:scale-95 transition-all text-center"><div className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-sm mb-2"><HelpCircle className="w-6 h-6 text-purple-600" /></div><span className="text-lg font-bold text-gray-800 dark:text-slate-200">Quiz</span></Link>
               <Link to="/educadicas" onClick={() => setIsOpen(false)} className="flex flex-col items-center justify-center p-4 bg-green-50/50 dark:bg-slate-900 rounded-xl hover:bg-green-50 active:scale-95 transition-all text-center"><div className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-sm mb-2"><Lightbulb className="w-6 h-6 text-green-600" /></div><span className="text-lg font-bold text-gray-800 dark:text-slate-200">Dicas</span></Link>
               <Link to="/favorites" onClick={() => setIsOpen(false)} className="flex flex-col items-center justify-center p-4 bg-amber-50/50 dark:bg-slate-900 rounded-xl hover:bg-amber-50 active:scale-95 transition-all text-center"><div className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-sm mb-2"><Bookmark className="w-6 h-6 text-amber-600 fill-current" /></div><span className="text-lg font-bold text-gray-800 dark:text-slate-200">Favoritos</span></Link>
-              <Link to="/resources" onClick={() => setIsOpen(false)} className="flex flex-col items-center justify-center p-4 bg-orange-50/50 dark:bg-slate-900 rounded-xl hover:bg-orange-50 active:scale-95 transition-all text-center"><div className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-sm mb-2"><FileDown className="w-6 h-6 text-orange-600" /></div><span className="text-lg font-bold text-gray-800 dark:text-slate-200">Recursos</span></Link>
+              <Link to="/biblioteca" onClick={() => setIsOpen(false)} className="flex flex-col items-center justify-center p-4 bg-blue-50/50 dark:bg-slate-900 rounded-xl hover:bg-blue-50 active:scale-95 transition-all text-center"><div className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-sm mb-2"><BookOpen className="w-6 h-6 text-brand-blue" /></div><span className="text-lg font-bold text-gray-800 dark:text-slate-200">Biblioteca</span></Link>
             </div>
             <div className="border-t border-gray-100 dark:border-slate-900 pt-4">
               <button onClick={() => setIsMobileCategoriesOpen(!isMobileCategoriesOpen)} className="w-full flex items-center justify-between py-2 mb-3 px-1"><div className="flex items-center gap-2"><span className="text-xl font-bold text-gray-900 dark:text-slate-100">Explorar Assuntos</span></div><ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isMobileCategoriesOpen ? 'rotate-180' : ''}`} /></button>

@@ -1,10 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { storageService } from '../services/storageService';
 import { apiService } from '../services/apiService';
 import { AUTHOR_DATA } from '../constants';
 import ArticleCard from '../components/features/ArticleCard';
+import { useFollow } from '../hooks/useFollow';
+import { useAuthorRealtime } from '../hooks/useAuthorRealtime';
+import AuthModal from '../components/auth/AuthModal';
 import {
   User, MapPin, Calendar, Award, BookOpen, Check, MessageSquare,
   X, Send, Loader2, Bell, Instagram, Linkedin
@@ -56,9 +58,6 @@ const AnimatedCounter = ({ value, label }: { value: number, label: string }) => 
 const Author: React.FC = () => {
   const { name } = useParams<{ name: string }>();
   const decodedName = decodeURIComponent(name || '');
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isAnimatingFollow, setIsAnimatingFollow] = useState(false);
-  const [toast, setToast] = useState<{ show: boolean, message: string }>({ show: false, message: '' });
 
   // Mensagem Modal State
   const [showMsgModal, setShowMsgModal] = useState(false);
@@ -74,14 +73,16 @@ const Author: React.FC = () => {
   // State para o perfil
   const [profileData, setProfileData] = useState<any>(null);
 
+  // Use new hook
+  const { isFollowing, loading: isFollowLoading, handleFollow, isAuthModalOpen, closeAuthModal, onAuthSuccess } = useFollow(decodedName);
+
   // Auth Token (Simulado ou Real) -> Em app real viria de Context/Redux
   // Por simplicidade, assumimos que o user pode ter um token no localStorage se estiver logado
-  const getAuthToken = () => localStorage.getItem('token');
+  const getAuthToken = () => localStorage.getItem('accessToken');
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const token = getAuthToken();
 
       // Fetch artigos e perfil em paralelo
       const [articles, profile] = await Promise.all([
@@ -120,34 +121,21 @@ const Author: React.FC = () => {
     badges: profileData?.profile?.badges || []
   };
 
-  const authorProfile = safeProfile;
+  // Real-time Stats Hook
+  const realtimeStats = useAuthorRealtime(decodedName, {
+    views: safeProfile.stats.reads,
+    followers: safeProfile.stats.followers,
+    karma: safeProfile.stats.karma
+  });
 
-  const handleFollow = async () => {
-    const token = getAuthToken();
-    if (!token) {
-      setToast({ show: true, message: "Faça login para seguirautores." });
-      setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
-      return;
+  const authorProfile = {
+    ...safeProfile,
+    stats: {
+      ...safeProfile.stats,
+      reads: realtimeStats.views ?? safeProfile.stats.reads,
+      followers: realtimeStats.followers ?? safeProfile.stats.followers,
+      karma: realtimeStats.karma ?? safeProfile.stats.karma
     }
-
-    setIsAnimatingFollow(true);
-    setTimeout(() => { setIsAnimatingFollow(false); }, 300);
-
-    try {
-      if (isFollowing) {
-        await apiService.unfollowAuthor(decodedName, token);
-        setIsFollowing(false);
-        setToast({ show: true, message: `Você deixou de seguir ${decodedName}` });
-      } else {
-        await apiService.followAuthor(decodedName, token);
-        setIsFollowing(true);
-        setToast({ show: true, message: `Você agora está seguindo ${decodedName}` });
-      }
-    } catch (error) {
-      setToast({ show: true, message: "Erro ao atualizar seguidor." });
-    }
-
-    setTimeout(() => { setToast(prev => ({ ...prev, show: false })); }, 3000);
   };
 
   const handleMessageOpen = () => { setShowMsgModal(true); setMsgSent(false); setMsgText(''); };
@@ -221,12 +209,24 @@ const Author: React.FC = () => {
                 </div>
 
                 <div className="flex gap-3">
-                  <button onClick={handleFollow} className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transform transition-all duration-300 ${isAnimatingFollow ? 'scale-105' : 'scale-100'} ${isFollowing ? 'bg-slate-100 dark:bg-slate-800 text-brand-blue dark:text-blue-400' : 'bg-brand-blue text-white hover:bg-brand-dark shadow-lg shadow-blue-500/10'}`}>
+                  <button
+                    onClick={() => {
+                      console.log('[AuthorPage] Follow button clicked');
+                      handleFollow();
+                    }}
+                    className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transform transition-all duration-300 ${isFollowing ? 'bg-slate-100 dark:bg-slate-800 text-brand-blue dark:text-blue-400' : 'bg-brand-blue text-white hover:bg-brand-dark shadow-lg shadow-blue-500/10'}`}
+                  >
                     {isFollowing ? <><Check size={14} /> Seguindo</> : <><Bell size={14} /> Seguir</>}
                   </button>
                   <button onClick={handleMessageOpen} className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2">
                     <MessageSquare size={14} /> Mensagem
                   </button>
+                  <AuthModal
+                    isOpen={isAuthModalOpen}
+                    onClose={closeAuthModal}
+                    onSuccess={onAuthSuccess}
+                    intentText={`Para seguir ${authorProfile.name}, crie a sua conta em segundos.`}
+                  />
                 </div>
               </div>
 
@@ -305,14 +305,7 @@ const Author: React.FC = () => {
 
       </div>
 
-      {toast.show && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 duration-300">
-          <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10">
-            <Check className="text-green-400" size={18} />
-            <p className="font-bold text-xs uppercase tracking-widest">{toast.message}</p>
-          </div>
-        </div>
-      )}
+
 
       {showMsgModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">

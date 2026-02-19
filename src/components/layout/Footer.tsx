@@ -109,7 +109,13 @@ const Footer: React.FC = () => {
         </div>
 
         <div className="border-t border-slate-800 dark:border-slate-950 mt-20 pt-10 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest">&copy; {new Date().getFullYear()} Sussurros do Saber. Todos os direitos reservados.</p>
+          <div className="flex flex-col gap-2">
+            <p className="text-slate-500 text-xs font-medium uppercase tracking-widest">&copy; {new Date().getFullYear()} Sussurros do Saber. Todos os direitos reservados.</p>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-[10px] text-slate-600 font-bold uppercase tracking-tighter">Produção v1.0.1 • Sistema Seguro</span>
+            </div>
+          </div>
           <div className="flex gap-6">
             <a href={settings?.facebookUrl || "#"} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-brand-blue transition-colors" aria-label="Facebook"><Facebook size={20} /></a>
             <a href={settings?.twitterUrl || "#"} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-brand-blue transition-colors" aria-label="Twitter"><Twitter size={20} /></a>

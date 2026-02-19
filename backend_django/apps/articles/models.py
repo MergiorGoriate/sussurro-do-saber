@@ -428,6 +428,57 @@ def create_outbox_event_on_publish(sender, instance, created, **kwargs):
             transaction.on_commit(lambda: dispatch_outbox_task.delay())
 
 
+class Bookmark(models.Model):
+    """Artigos guardados pelo utilizador (Biblioteca Pessoal)"""
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='bookmarks',
+        verbose_name="Utilizador"
+    )
+    article = models.ForeignKey(
+        Article,
+        on_delete=models.CASCADE,
+        related_name='bookmarked_by',
+        verbose_name="Artigo"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Guardado em")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Favorito"
+        verbose_name_plural = "Favoritos"
+        unique_together = ('user', 'article')
+
+    def __str__(self):
+        return f"{self.user.username} guardou {self.article.title}"
+
+
+class UserLike(models.Model):
+    """Likes de artigos por utilizadores autenticados"""
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='article_likes',
+        verbose_name="Utilizador"
+    )
+    article = models.ForeignKey(
+        Article,
+        on_delete=models.CASCADE,
+        related_name='liked_by',
+        verbose_name="Artigo"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'article')
+        verbose_name = "Like de Utilizador"
+        verbose_name_plural = "Likes de Utilizadores"
+
+    def __str__(self):
+        return f"{self.user.username} gostou de {self.article.title}"
+
+
 @receiver(post_save, sender=Footnote)
 def update_karma_on_footnote_approval(sender, instance, **kwargs):
     """Aumenta o Karma do autor quando uma nota é aprovada"""

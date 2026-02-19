@@ -7,6 +7,8 @@ import ArticleCard from '../components/features/ArticleCard';
 import { Bookmark, ArrowRight, Loader2, BookOpen, Sparkles } from 'lucide-react';
 import { Article } from '../types';
 
+import { apiService } from '../services/apiService';
+
 const Favorites: React.FC = () => {
   const [bookmarkedArticles, setBookmarkedArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -15,6 +17,17 @@ const Favorites: React.FC = () => {
     const loadFavorites = async () => {
       setIsLoading(true);
       try {
+        const token = localStorage.getItem('accessToken');
+
+        // 1. Authenticated: Fetch from Cloud
+        if (token) {
+          const cloudBookmarks = await apiService.getBookmarks(token);
+          setBookmarkedArticles(cloudBookmarks);
+          setIsLoading(false);
+          return;
+        }
+
+        // 2. Anonymous: Fetch from LocalStorage
         const interactions = storageService.getUserInteractions();
         // Robust filtering: ensure strings, remove invalid 'null'/'undefined' strings
         const bookmarks = (interactions.bookmarkedArticles || [])
