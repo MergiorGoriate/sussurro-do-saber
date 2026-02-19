@@ -25,7 +25,7 @@ sussurros-do-saber/
 │
 ├── frontend/        # React + Next.js (TypeScript)
 ├── backend/         # Django REST API
-├── cms/             # CMS custom (Flask)
+├── cms/             # CMS custom (Django)
 ├── infrastructure/  # Nginx, Docker, Deploy configs
 └── docs/            # Documentação técnica
 ```
