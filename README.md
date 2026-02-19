@@ -34,60 +34,36 @@ sussurros-do-saber/
 A plataforma foi concebida com uma arquitectura moderna, escalável e preparada para milhares de utilizadores.
 
 ### 🔹 Frontend
-
-React + Next.js
-
-TypeScript
-
-SSR/SSG para performance e SEO académico
-
-Interface optimizada para leitura científica
+- React + Next.js
+- TypeScript
+- SSR/SSG para performance e SEO académico
+- Interface optimizada para leitura científica
 
 ### 🔹 Backend (API Principal)
-
-Django (Python)
-
-Django REST Framework
-
-Autenticação segura
-
-Sistema de autores, artigos e categorias
-
-Integração com Redis e Celery
+- Django (Python)
+- Django REST Framework
+- Autenticação segura
+- Sistema de autores, artigos e categorias
+- Integração com Redis e Celery
 
 ### 🔹 CMS (Gestão Editorial)
-
-Flask (100% customizado)
-
-Painel administrativo próprio
-
-Gestão de:
-
-Artigos
-
-Livros
-
-Monografias
-
-Teses
-
-Recursos educativos
-
-Autores
+- Flask (100% customizado)
+- Painel administrativo próprio
+- Gestão de:
+- Artigos
+- Livros
+- Monografias
+- Teses
+- Recursos educativos
+- Autores
 
 ### 🔹 Infraestrutura
-
-Hosting: Hetzner VPS
-
-Armazenamento: Cloudflare R2 (object storage)
-
-Cache & Real-time: Redis
-
-Background Tasks: Celery
-
-Nginx: Reverse proxy e gestão de domínio
-
-PostgreSQL: Base de dados principal
+- Hosting: Hetzner VPS
+- Armazenamento: Cloudflare R2 (object storage)
+- Cache & Real-time: Redis
+- Background Tasks: Celery
+- Nginx: Reverse proxy e gestão de domínio
+- PostgreSQL: Base de dados principal
 
 ### 1. Backend (Django)
 
