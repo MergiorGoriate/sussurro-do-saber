@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://6996744ab3906ad69abd9423.imgix.net/D%3A/Fotos/Genio%20purificado%20da%20desgraca/Logo.png" />
+<img width="1200" height="475" alt="GHBanner" src="https://6996744ab3906ad69abd9423.imgix.net/D%3A/Fotos/Genio%20purificado%20da%20desgraca/5.png" />
 </div>
 
 # Sussurros do Saber 🦉
