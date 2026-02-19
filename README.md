@@ -4,7 +4,11 @@
 
 # Sussurros do Saber 🦉
 
-Uma plataforma moderna de publicação académica e científica, focada na experiência de leitura e descoberta.
+Sussurros do Saber é uma plataforma digital africana de divulgação científica e publicação académica, concebida para fortalecer a produção intelectual no continente através de tecnologia moderna, rigor científico e contextualização africana.
+
+## Missão
+
+Democratizar o acesso ao conhecimento científico em África, promovendo conteúdos académicos contextualizados à realidade africana e fortalecendo a soberania intelectual digital do continente.
 
 ## Tech Stack 🛠️
 
@@ -14,13 +18,74 @@ Uma plataforma moderna de publicação académica e científica, focada na exper
 - **Infrastructure**: Docker, Docker Compose, WhiteNoise.
 - **AI Integration**: Google Gemini (Resumos, Glossário, Chat).
 
-## Como Executar (Localmente) 💻
+## 🏗 Arquitectura do Sistema
+sussurros-do-saber/
+│
+├── frontend/        # React + Next.js (TypeScript)
+├── backend/         # Django REST API
+├── cms/             # CMS custom (Flask)
+├── infrastructure/  # Nginx, Docker, Deploy configs
+└── docs/            # Documentação técnica
 
-### Pré-requisitos
+## 🧠 Arquitectura Tecnológica
 
-- Node.js & npm
-- Python 3.12+
-- Docker (Opcional para dev, obrigatório para deploy)
+A plataforma foi concebida com uma arquitectura moderna, escalável e preparada para milhares de utilizadores.
+
+### 🔹 Frontend
+
+React + Next.js
+
+TypeScript
+
+SSR/SSG para performance e SEO académico
+
+Interface optimizada para leitura científica
+
+### 🔹 Backend (API Principal)
+
+Django (Python)
+
+Django REST Framework
+
+Autenticação segura
+
+Sistema de autores, artigos e categorias
+
+Integração com Redis e Celery
+
+### 🔹 CMS (Gestão Editorial)
+
+Flask (100% customizado)
+
+Painel administrativo próprio
+
+Gestão de:
+
+Artigos
+
+Livros
+
+Monografias
+
+Teses
+
+Recursos educativos
+
+Autores
+
+### 🔹 Infraestrutura
+
+Hosting: Hetzner VPS
+
+Armazenamento: Cloudflare R2 (object storage)
+
+Cache & Real-time: Redis
+
+Background Tasks: Celery
+
+Nginx: Reverse proxy e gestão de domínio
+
+PostgreSQL: Base de dados principal
 
 ### 1. Backend (Django)
 
