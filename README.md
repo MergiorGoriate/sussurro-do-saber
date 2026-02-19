@@ -19,6 +19,8 @@ Democratizar o acesso ao conhecimento científico em África, promovendo conteú
 - **AI Integration**: Google Gemini (Resumos, Glossário, Chat).
 
 ## 🏗 Arquitectura do Sistema
+
+```bash
 sussurros-do-saber/
 │
 ├── frontend/        # React + Next.js (TypeScript)
@@ -26,7 +28,7 @@ sussurros-do-saber/
 ├── cms/             # CMS custom (Flask)
 ├── infrastructure/  # Nginx, Docker, Deploy configs
 └── docs/            # Documentação técnica
-
+```
 ## 🧠 Arquitectura Tecnológica
 
 A plataforma foi concebida com uma arquitectura moderna, escalável e preparada para milhares de utilizadores.
