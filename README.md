@@ -89,7 +89,7 @@ npm run dev
 
 Aceda a:
 
-- **Site**: [http://localhost:8000](http://localhost:8000)
+- **Site**: [http://localhost:8000](http://localhost:5173)
 - **Admin/CMS**: [http://localhost:8000/admin/](http://localhost:8000/admin/)
 
 ## Deployment (Docker) 🐳
