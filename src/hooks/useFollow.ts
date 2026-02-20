@@ -63,15 +63,16 @@ export const useFollow = (authorUsername: string) => {
     };
 
     const handleFollow = async () => {
-        console.log(`[useFollow] handleFollow for: ${authorUsername}. auth=${isAuthenticated}`);
-        if (!authorUsername) {
-            console.warn('[useFollow] No authorUsername provided');
+        console.log(`[useFollow] handleFollow triggered for: '${authorUsername}'. Status: follows=${isFollowing}, auth=${isAuthenticated}`);
+
+        if (!authorUsername || authorUsername === 'undefined') {
+            console.error('[useFollow] ABORT: Invalid or missing authorUsername:', authorUsername);
+            toast.error(t('author.invalid_username', 'Erro: Utilizador não identificado'));
             return;
         }
 
         if (!isAuthenticated) {
-            console.log('[useFollow] Saving pending action and opening AuthModal');
-            // Save structured pending action
+            console.log('[useFollow] User not authenticated. Storing pending action and opening AuthModal');
             const pendingAction = {
                 type: 'follow_author',
                 target: authorUsername,
@@ -85,23 +86,24 @@ export const useFollow = (authorUsername: string) => {
         setLoading(true);
         try {
             const token = localStorage.getItem('accessToken');
-            console.log(`[useFollow] Got token: ${!!token}`);
-            if (!token) throw new Error('No token');
+            console.log(`[useFollow] Requesting follow status change. Token present: ${!!token}`);
+            if (!token) throw new Error('Security token (JWT) is missing from storage');
 
             if (isFollowing) {
-                console.log(`[useFollow] Unfollowing ${authorUsername}`);
+                console.log(`[useFollow] Executing UNFOLLOW call for author: ${authorUsername}`);
                 await apiService.unfollowAuthor(authorUsername, token);
                 setIsFollowing(false);
                 toast.success(t('author.unfollowed', 'Deixou de seguir este autor'));
             } else {
-                console.log(`[useFollow] Following ${authorUsername}`);
+                console.log(`[useFollow] Executing FOLLOW call for author: ${authorUsername}`);
                 await apiService.followAuthor(authorUsername, token);
                 setIsFollowing(true);
                 toast.success(t('author.followed', 'Agora está a seguir este autor!'));
             }
-        } catch (error) {
-            console.error('[useFollow] handleFollow error:', error);
-            toast.error(t('author.error', 'Erro ao atualizar estado de seguir'));
+        } catch (error: any) {
+            console.error('[useFollow] handleFollow CRITICAL ERROR:', error);
+            const msg = error.message || 'Erro desconhecido';
+            toast.error(`${t('author.error', 'Erro ao atualizar estado de seguir')}: ${msg}`);
         } finally {
             setLoading(false);
         }

@@ -40,7 +40,11 @@ const AuthCallback: React.FC = () => {
     const handleCallback = async (provider: 'google' | 'apple', code: string, state?: string) => {
         try {
             const data = await authService.exchangeSocialCode(provider, code, state);
-            login(data.access, data.refresh, { id: data.user_id, username: data.username, email: '' });
+            login(data.access, data.refresh, {
+                id: data.user_id,
+                username: data.username,
+                email: data.email || ''
+            });
 
             // Pending action logic is handled by useFollow hook or global listener upon auth success
             // We just redirect to home or previous page

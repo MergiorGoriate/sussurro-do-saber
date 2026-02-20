@@ -165,22 +165,6 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Cloudflare R2 / AWS S3 Storage
-IF_STORAGE_R2 = env.bool('IF_STORAGE_R2', default=False)
-
-if IF_STORAGE_R2:
-    INSTALLED_APPS += ['storages']
-    AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_ENDPOINT_URL = env('AWS_S3_ENDPOINT_URL')
-    AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME', default='auto')
-    AWS_S3_FILE_OVERWRITE = False
-    AWS_DEFAULT_ACL = None
-    AWS_S3_VERIFY = True
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    # Optional: AWS_S3_CUSTOM_DOMAIN = env('AWS_S3_CUSTOM_DOMAIN', default=None)
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -298,8 +282,18 @@ GOOGLE_OAUTH2_SECRET = env('GOOGLE_OAUTH2_SECRET', default='')
 APPLE_CLIENT_ID = env('APPLE_CLIENT_ID', default='')
 
 # Celery Configuration
-CELERY_BROKER_URL = env('REDIS_URL', default='redis://localhost:6379/1')
-CELERY_RESULT_BACKEND = env('REDIS_URL', default='redis://localhost:6379/1')
+REDIS_URL = env('REDIS_URL', default=None)
+
+if DEBUG and not REDIS_URL:
+    # Use Eager mode for local dev without Redis
+    CELERY_BROKER_URL = 'memory://'
+    CELERY_RESULT_BACKEND = None
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+else:
+    CELERY_BROKER_URL = REDIS_URL or 'redis://localhost:6379/1'
+    CELERY_RESULT_BACKEND = REDIS_URL or 'redis://localhost:6379/1'
+
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -309,3 +303,17 @@ CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 
 # Site settings
 SITE_ID = 1
+
+# Security Settings for Production
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    X_FRAME_OPTIONS = 'DENY'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+else:
+    X_FRAME_OPTIONS = 'SAMEORIGIN'

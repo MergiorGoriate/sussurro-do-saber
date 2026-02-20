@@ -6,14 +6,27 @@ from django.conf import settings
 # Initialize Redis connection with safety wrapper
 class SafeRedisWrapper:
     def __init__(self, url):
-        self.client = redis.StrictRedis.from_url(url, decode_responses=True)
+        self.enabled = False
+        self.client = None
+        if url and (url.startswith('redis://') or url.startswith('rediss://')):
+            try:
+                self.client = redis.StrictRedis.from_url(url, decode_responses=True)
+                self.enabled = True
+            except Exception as e:
+                print(f"[SafeRedisWrapper] Erro ao inicializar cliente Redis: {e}")
+        else:
+            print(f"[SafeRedisWrapper] Redis desativado ou esquema de URL inválido para analytics: {url}")
 
     def __getattr__(self, name):
+        if not self.enabled:
+            # Retorna uma função dummy que não faz nada se o Redis estiver desativado
+            return lambda *args, **kwargs: None
+            
         def method(*args, **kwargs):
             try:
                 return getattr(self.client, name)(*args, **kwargs)
             except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError, ConnectionRefusedError):
-                # Silently fail for local dev without Redis
+                # Falha silenciosa para desenvolvimento local sem Redis
                 return None
         return method
 

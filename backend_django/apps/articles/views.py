@@ -368,17 +368,22 @@ class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
         identifier = self.kwargs[lookup_url_kwarg].strip()
-
-        # Prioridade 1: Match EXATO (Crucial para SQLite + Acentos)
-        obj = queryset.filter(username=identifier).first()
         
-        # Prioridade 2: Username iexact (Fallback para sem acentos ou outros DBs)
+        print(f"[AuthorViewSet] Requisitando objeto com identificador: '{identifier}'")
+
+        # Prioridade 1: Match EXATO
+        obj = queryset.filter(username=identifier).first()
+        if obj: print(f"[AuthorViewSet] Encontrado via username exato: {obj.username}")
+        
+        # Prioridade 2: Username iexact
         if not obj:
             obj = queryset.filter(username__iexact=identifier).first()
+            if obj: print(f"[AuthorViewSet] Encontrado via username iexact: {obj.username}")
         
         if not obj:
             # Prioridade 3: Email exato
             obj = queryset.filter(email__iexact=identifier).first()
+            if obj: print(f"[AuthorViewSet] Encontrado via email: {obj.email}")
             
         if not obj:
             # Prioridade 4: Nome Completo (Primeiro + Último)
@@ -386,16 +391,17 @@ class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
             if len(parts) >= 2:
                 first = parts[0]
                 last = " ".join(parts[1:])
-                # Tenta exact e depois iexact para o nome
                 obj = queryset.filter(first_name=first, last_name=last).first()
                 if not obj:
                     obj = queryset.filter(first_name__iexact=first, last_name__iexact=last).first()
                 
                 if not obj:
-                    # Match relaxado: primeiro e último token
                     obj = queryset.filter(first_name__iexact=first, last_name__iexact=parts[-1]).first()
+                
+                if obj: print(f"[AuthorViewSet] Encontrado via nome: {obj.get_full_name()}")
 
         if not obj:
+            print(f"[AuthorViewSet] AVISO: Nenhum autor encontrado para '{identifier}'")
             from django.http import Http404
             raise Http404
 
@@ -414,20 +420,24 @@ class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def follow(self, request, username=None):
-        author = self.get_object()
-        user = request.user
-        
-        # Check if already following
-        if AuthorFollower.objects.filter(author=author, follower_email=user.email).exists():
-            return Response({'detail': 'Você já segue este autor.'}, status=status.HTTP_409_CONFLICT)
+        try:
+            author = self.get_object()
+            user = request.user
             
-        # Create follower linked to user account
-        AuthorFollower.objects.create(
-            author=author,
-            follower_email=user.email,
-            follower_user=user
-        )
-        return Response({'detail': 'Agora você segue este autor.', 'following': True}, status=status.HTTP_201_CREATED)
+            # Check if already following
+            if AuthorFollower.objects.filter(author=author, follower_email=user.email).exists():
+                return Response({'detail': 'Você já segue este autor.', 'following': True}, status=status.HTTP_200_OK)
+                
+            # Create follower linked to user account
+            AuthorFollower.objects.create(
+                author=author,
+                follower_email=user.email,
+                follower_user=user
+            )
+            return Response({'detail': 'Agora você segue este autor.', 'following': True}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            print(f"[AuthorViewSet] Erro no follow: {str(e)}")
+            return Response({'detail': f'Erro ao seguir autor: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def unfollow(self, request, username=None):

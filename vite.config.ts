@@ -16,15 +16,15 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      outDir: 'backend_django/static',
+      outDir: 'dist',
       assetsDir: 'assets',
-      emptyOutDir: false,
+      emptyOutDir: true,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
         },
       },
     },
-    base: mode === 'development' ? '/' : '/static/',
+    base: '/',
   };
 });

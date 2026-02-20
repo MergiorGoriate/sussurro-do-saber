@@ -31,4 +31,4 @@ class TestAuthorMessageModel:
         )
         assert message.author == user
         assert message.is_read is False
-        assert str(message) == f"Mensagem de Sender Name para {user.username}"
+        assert str(message) == f"Mensagem de Sender Name para {user.get_full_name() or user.username}"

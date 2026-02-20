@@ -39,7 +39,8 @@ const authService = {
             localStorage.setItem('refreshToken', data.refresh);
             localStorage.setItem('user', JSON.stringify({
                 id: data.user_id,
-                username: data.username
+                username: data.username,
+                email: data.email || '' // Ensure email is saved if provided
             }));
         }
         return data;
@@ -76,7 +77,8 @@ const authService = {
             localStorage.setItem('refreshToken', data.refresh);
             localStorage.setItem('user', JSON.stringify({
                 id: data.user_id,
-                username: data.username || `user_${data.user_id}`
+                username: data.username || `user_${data.user_id}`,
+                email: data.email || ''
             }));
         }
         return data;
