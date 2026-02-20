@@ -76,7 +76,29 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&display=swap"
     rel="stylesheet">
 
-  <!-- Tailwind is handled via build or index.css -->
+  <!-- Tailwind Script -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Merriweather', 'serif'],
+          },
+          colors: {
+            brand: {
+              blue: '#053061',
+              accent: '#47a905',
+              light: '#f4f7f9',
+              text: '#2c3e50',
+            }
+          }
+        }
+      }
+    }
+  </script>
 
 
   <!-- Assets handled by Vite -->
