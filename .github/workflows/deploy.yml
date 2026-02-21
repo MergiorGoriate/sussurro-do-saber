@@ -1,17 +1,51 @@
-name: Deploy to VPS
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  deploy:
+  test-and-lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Deploy to VPS via SSH
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install Backend Dependencies
+        run: |
+          cd backend_django
+          pip install -r requirements.txt
+
+      - name: Run Django Checks
+        run: |
+          cd backend_django
+          python manage.py check
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install Frontend Dependencies
+        run: npm install
+
+      - name: Run Frontend Lint
+        run: npm run lint
+
+  build-and-deploy:
+    needs: test-and-lint
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -20,9 +54,11 @@ jobs:
           script: |
             cd /var/www/sussurros/app
             git pull origin main
-            source venv/bin/activate
-            pip install -r backend_django/requirements.txt
+
+            # Using Docker Compose for Deployment
             cd backend_django
-            python3 manage.py migrate --noinput
-            python3 manage.py collectstatic --noinput
-            sudo systemctl restart gunicorn
+            docker-compose -f docker-compose.prod.yml up --build -d
+
+            # Run Migrations and Collect Static
+            docker-compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
+            docker-compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput
