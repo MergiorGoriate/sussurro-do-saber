@@ -4,6 +4,8 @@
 
 # Sussurros do Saber 🦉
 
+[![CI/CD Pipeline](https://github.com/MergiorGoriate/sussurro-do-saber/actions/workflows/deploy.yml/badge.svg)](https://github.com/MergiorGoriate/sussurro-do-saber/actions/workflows/deploy.yml)
+
 Sussurros do Saber é uma plataforma digital africana de divulgação científica e publicação académica, concebida para fortalecer a produção intelectual no continente através de tecnologia moderna, rigor científico e contextualização africana.
 
 ## Missão
