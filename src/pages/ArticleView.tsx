@@ -15,6 +15,7 @@ import SimpleMarkdown from '../components/ui/SimpleMarkdown';
 import { useTranslation } from 'react-i18next';
 import { useFollow } from '../hooks/useFollow';
 import { useArticleRealtime } from '../hooks/useArticleRealtime';
+import { useViewConfirmed } from '../hooks/useViewConfirmed';
 import AuthModal from '../components/auth/AuthModal';
 
 const ArticleView: React.FC = () => {
@@ -29,6 +30,7 @@ const ArticleView: React.FC = () => {
 
   const { isFollowing, handleFollow, isAuthModalOpen, closeAuthModal, onAuthSuccess } = useFollow(article?.author_username || article?.author || '');
   const { views } = useArticleRealtime(id, article?.views);
+  useViewConfirmed(article?.id);
 
   const [isLoading, setIsLoading] = useState(!location.state);
   const [isLiked, setIsLiked] = useState(false);
@@ -138,15 +140,18 @@ const ArticleView: React.FC = () => {
           setFootnotes(artFootnotes);
         }).catch(err => console.error("Error fetching secondary data:", err));
 
-        const interactions = storageService.getUserInteractions();
-        setIsLiked(interactions.likedArticles.includes(String(id)));
+        const checkInteractions = () => {
+          const interactions = storageService.getUserInteractions();
+          const isLocallyBookmarked = interactions.bookmarkedArticles.includes(String(fetchedArticle.id)) ||
+            interactions.bookmarkedArticles.includes(String(id));
 
-        // Robust check: Check if either the current ID (param) or the Article's official Slug/ID is bookmarked
-        const isBookmarkedByID = interactions.bookmarkedArticles.includes(String(id));
-        const isBookmarkedBySlug = fetchedArticle.slug ? interactions.bookmarkedArticles.includes(fetchedArticle.slug) : false;
-        const isBookmarkedByArticleID = interactions.bookmarkedArticles.includes(String(fetchedArticle.id));
+          setIsBookmarked(!!fetchedArticle.is_bookmarked || isLocallyBookmarked);
+          setIsLiked(interactions.likedArticles.includes(String(id)) || !!fetchedArticle.is_liked);
+        };
 
-        setIsBookmarked(isBookmarkedByID || isBookmarkedBySlug || isBookmarkedByArticleID);
+        checkInteractions();
+        window.addEventListener('storage-update', checkInteractions);
+        return () => window.removeEventListener('storage-update', checkInteractions);
       } else {
         setIsLoading(false);
       }
@@ -185,17 +190,19 @@ const ArticleView: React.FC = () => {
   }, [id]);
 
   const handleLike = async () => {
-    if (!id) return;
-    const liked = await storageService.toggleLike(id);
+    // Standardize: Always use the numeric ID if available for consistency in storage/API
+    const targetId = article?.id || id;
+    if (!targetId) return;
+    const liked = await storageService.toggleLike(String(targetId));
     setIsLiked(liked);
   };
 
   const handleBookmark = async () => {
-    // Prefer using the official slug/ID from the loaded article to ensure consistency
-    const targetId = article?.slug || id;
+    // Standardize: Always use the numeric ID if available
+    const targetId = article?.id || id;
     if (!targetId) return;
 
-    const bookmarked = await storageService.toggleBookmark(targetId);
+    const bookmarked = await storageService.toggleBookmark(String(targetId));
     setIsBookmarked(bookmarked);
   };
 
@@ -318,7 +325,7 @@ const ArticleView: React.FC = () => {
 
               <button
                 onClick={() => {
-                  console.log('[ArticleView] Follow button clicked');
+
                   handleFollow();
                 }}
                 className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${isFollowing ? 'bg-slate-100 dark:bg-slate-800 text-brand-blue dark:text-blue-400' : 'bg-brand-blue text-white hover:bg-brand-dark'}`}

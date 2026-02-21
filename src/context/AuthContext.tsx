@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import authService, { User } from '../services/authService';
+import { storageService } from '../services/storageService';
 
 interface AuthContextType {
     user: User | null;
@@ -28,6 +29,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('refreshToken', refresh);
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
+
+        // Trigger background sync for bookmarks/likes
+        storageService.syncCloudInteractions().catch(console.error);
     };
 
     const logout = () => {

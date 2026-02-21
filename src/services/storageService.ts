@@ -55,7 +55,7 @@ class JournalBackend {
   }
 
   public async addComment(articleId: string, author: string, content: string, email?: string): Promise<Comment> {
-    const response = await fetch(`http://localhost:8000/api/articles/${articleId}/comments/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/articles/${articleId}/comments/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ author, content, email })
@@ -65,7 +65,7 @@ class JournalBackend {
   }
 
   public async getArticleComments(articleId: string): Promise<Comment[]> {
-    const response = await fetch(`http://localhost:8000/api/articles/${articleId}/comments/`);
+    const response = await fetch(`http://127.0.0.1:8000/api/articles/${articleId}/comments/`);
     if (!response.ok) return [];
     return response.json();
   }
@@ -97,7 +97,7 @@ class JournalBackend {
   }
 
   public async addSubscriber(email: string): Promise<boolean> {
-    const response = await fetch(`http://localhost:8000/api/subscribers/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/subscribers/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
@@ -106,7 +106,7 @@ class JournalBackend {
   }
 
   public async login(email: string, pass: string): Promise<BlogUser | null> {
-    const response = await fetch(`http://localhost:8000/api/auth/login/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/auth/login/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password: pass })
@@ -132,8 +132,8 @@ class JournalBackend {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
     const method = article.slug ? 'PUT' : 'POST';
     const url = article.slug
-      ? `http://localhost:8000/api/articles/${article.slug}/`
-      : `http://localhost:8000/api/articles/`;
+      ? `http://127.0.0.1:8000/api/articles/${article.slug}/`
+      : `http://127.0.0.1:8000/api/articles/`;
 
     const response = await fetch(url, {
       method,
@@ -150,7 +150,7 @@ class JournalBackend {
 
   public async deleteArticle(id: string) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/articles/${id}/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/articles/${id}/`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -172,7 +172,7 @@ class JournalBackend {
     }
   }
 
-  public async toggleBookmark(id: string): Promise<boolean> {
+  public async toggleBookmark(id: string | number): Promise<boolean> {
     const safeId = String(id);
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
 
@@ -184,7 +184,7 @@ class JournalBackend {
         if (result) {
           if (!stats.bookmarkedArticles.includes(safeId)) stats.bookmarkedArticles.push(safeId);
         } else {
-          // Remove if present (could be slug or ID)
+          // Remove if present
           const idx = stats.bookmarkedArticles.indexOf(safeId);
           if (idx !== -1) stats.bookmarkedArticles.splice(idx, 1);
         }
@@ -215,9 +215,65 @@ class JournalBackend {
     return result;
   }
 
+  /**
+   * Syncs cloud bookmarks with local storage to ensure UI consistency.
+   * Also merges local guest bookmarks to the cloud if they don't exist yet.
+   */
+  public async syncCloudInteractions(): Promise<void> {
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH);
+    if (!token) return;
+
+    try {
+      // 1. Get current cloud bookmarks
+      const cloudBookmarks = await apiService.getBookmarks(token);
+      const cloudIds = cloudBookmarks.map(art => String(art.id));
+
+      // 2. Get local interactions (potentially containing guest bookmarks)
+      const stats = this.getUserInteractions();
+      const localIds = stats.bookmarkedArticles as string[];
+
+      // 3. Detect changes
+      let hasChanged = false;
+
+      // Merge: If a local ID is not in cloud, try to save it to cloud (Merge Guest -> Account)
+      const toSync = localIds.filter((id: string) => !cloudIds.includes(id));
+
+      if (toSync.length > 0) {
+        console.log(`[storageService] Syncing ${toSync.length} guest bookmarks to cloud...`);
+        for (const articleId of toSync) {
+          try {
+            await apiService.toggleBookmark(articleId as string, token);
+            hasChanged = true;
+          } catch (e) {
+            console.warn(`[storageService] Failed to sync bookmark ${articleId}`, e);
+          }
+        }
+        // Re-fetch cloud bookmarks after sync to get complete list if we added any
+        if (hasChanged) {
+          const updatedCloud = await apiService.getBookmarks(token);
+          stats.bookmarkedArticles = updatedCloud.map(art => String(art.id));
+        }
+      } else {
+        // No new local bookmarks to upload.
+        // Check if cloud has more than local (Cloud was updated elsewhere)
+        if (cloudIds.length !== localIds.length || !cloudIds.every(id => localIds.includes(id))) {
+          stats.bookmarkedArticles = cloudIds;
+          hasChanged = true;
+        }
+      }
+
+      if (hasChanged) {
+        localStorage.setItem(STORAGE_KEYS.INTERACTIONS, JSON.stringify(stats));
+        window.dispatchEvent(new Event('storage-update'));
+      }
+    } catch (e) {
+      console.error("Failed to sync cloud interactions:", e);
+    }
+  }
+
   public async getComments(): Promise<Comment[]> {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/comments/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/comments/`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) return [];
@@ -227,7 +283,7 @@ class JournalBackend {
 
   public async updateCommentStatus(id: string, status: CommentStatus, user: BlogUser) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/comments/${id}/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/comments/${id}/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -240,7 +296,7 @@ class JournalBackend {
 
   public async deleteComment(id: string, user: BlogUser) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/comments/${id}/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/comments/${id}/`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -249,7 +305,7 @@ class JournalBackend {
 
   public async getSubscribers(): Promise<string[]> {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/subscribers/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/subscribers/`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) return [];
@@ -257,14 +313,14 @@ class JournalBackend {
   }
 
   public async getSettings(): Promise<BlogSettings> {
-    const response = await fetch(`http://localhost:8000/api/settings/`);
+    const response = await fetch(`http://127.0.0.1:8000/api/settings/`);
     if (!response.ok) return this.db.settings;
     return response.json();
   }
 
   public async updateSettings(settings: BlogSettings) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/settings/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/settings/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -277,7 +333,7 @@ class JournalBackend {
 
   public async getUsers(): Promise<BlogUser[]> {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/users/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/users/`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) return [];
@@ -286,7 +342,7 @@ class JournalBackend {
 
   public async createUser(userData: Partial<BlogUser>) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/users/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/users/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -302,7 +358,7 @@ class JournalBackend {
 
   public async updateProfile(profileData: Partial<BlogUser>) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/auth/profile/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/auth/profile/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -340,7 +396,7 @@ class JournalBackend {
 
   public async updateFootnoteStatus(id: string, status: FootnoteStatus) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/footnotes/${id}/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/footnotes/${id}/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -353,7 +409,7 @@ class JournalBackend {
 
   public async deleteFootnote(id: string) {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH);
-    const response = await fetch(`http://localhost:8000/api/footnotes/${id}/`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/footnotes/${id}/`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });

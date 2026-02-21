@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-PT" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sussurros do Saber</title>
+    <meta name="description"
+        content="Sussurros do Saber é um jornal académico multidisciplinar de acesso aberto, dedicado à divulgação de ciência e cultura." />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sussurrosdosaber.com/" />
+    <meta property="og:title" content="Sussurros do Saber | Jornal Académico" />
+    <meta property="og:description" content="Divulgação de ciência e cultura com rigor e acessibilidade." />
+    <meta property="og:image" content="https://sussurrosdosaber.com/og-image.jpg" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://sussurrosdosaber.com/" />
+    <meta property="twitter:title" content="Sussurros do Saber" />
+    <meta property="twitter:description" content="Multidisciplinary Academic Open Access Journal" />
+    <meta property="twitter:image" content="https://sussurrosdosaber.com/og-image.jpg" />
+
+    <!-- Analytics Placeholder (Simple Script) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PLACEHOLDER"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-PLACEHOLDER');
+    </script>
+
+    <!-- PWA Settings & Browser UI Color -->
+    <!-- PWA Settings & Browser UI Color -->
+    <!-- Default for Light Mode (overridden by JS for Dark Mode support in Firefox/Opera) -->
+    <meta name="theme-color" content="#053061" />
+    <meta name="color-scheme" content="light dark" />
+
+    <script>
+        // Fix for Firefox/Opera ignoring media="prefers-color-scheme" in meta theme-color
+        (function () {
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            const lightColor = '#053061';
+            const darkColor = '#020617';
+
+            function updateThemeColor() {
+                if (!metaThemeColor) return;
+                const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                metaThemeColor.setAttribute('content', isDark ? darkColor : lightColor);
+            }
+
+            // Initial check
+            updateThemeColor();
+
+            // Listen for changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeColor);
+        })();
+    </script>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sussurros">
+    <link rel="apple-touch-icon" href="https://69697dc3356a14887c615411.imgix.net/logo.png">
+
+    <link rel="stylesheet" href="src/index.css">
+</head>
+
+<body class="bg-brand-light dark:bg-slate-950 text-brand-text dark:text-slate-200 antialiased">
+    <div id="root"></div>
+    <script type="module" src="src/main.tsx"></script>
+</body>
+
+</html>

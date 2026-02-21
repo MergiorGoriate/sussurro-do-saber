@@ -1,3 +1,26 @@
+# Environment and Secrets
+.env
+.env.local
+.env.production
+.env.*
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+backend_django/db.sqlite3
+backend_django/staticfiles/
+backend_django/media/
+.pytest_cache/
+venv/
+.venv/
+
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
 # Logs
 logs
 *.log
@@ -7,24 +30,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# Local environments and databases
-.venv/
-instance/
-__pycache__/
-*.pyc

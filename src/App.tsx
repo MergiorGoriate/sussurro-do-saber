@@ -1,5 +1,6 @@
 
 import React, { Suspense, lazy, useState, useEffect } from 'react';
+import { ErrorBoundary, withProfiler } from "@sentry/react";
 import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -27,6 +28,10 @@ const AIResearch = lazy(() => import('./pages/AIResearch'));
 const RSSFeed = lazy(() => import('./pages/RSSFeed.tsx'));
 const Library = lazy(() => import('./pages/Library'));
 const PublicationDetail = lazy(() => import('./pages/PublicationDetail'));
+const AuthorsGuideline = lazy(() => import('./pages/guidelines/Authors'));
+const ReviewersGuideline = lazy(() => import('./pages/guidelines/Reviewers'));
+const EditorsGuideline = lazy(() => import('./pages/guidelines/Editors'));
+const LibrariansGuideline = lazy(() => import('./pages/guidelines/Librarians'));
 
 const ScrollToTop = () => {
   const { pathname, search } = useLocation();
@@ -44,7 +49,7 @@ const PageLoader = () => (
 
 const AdminRedirect = () => {
   useEffect(() => {
-    window.location.href = 'http://localhost:8000/admin/';
+    window.location.href = 'http://127.0.0.1:8000/admin/';
   }, []);
   return <PageLoader />;
 };
@@ -70,54 +75,60 @@ const App: React.FC = () => {
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
 
   return (
-    <AuthProvider>
-      <Router>
-        <ScrollToTop />
-        <Toaster position="top-center" richColors />
-        <div className="flex flex-col min-h-screen bg-brand-light dark:bg-slate-950 font-sans transition-colors duration-300">
-          <Routes>
-            <Route path="/admin" element={<AdminRedirect />} />
+    <ErrorBoundary fallback={<div className="p-8 text-center"><h2 className="text-xl font-bold">Algo correu mal.</h2><p className="text-slate-500">O erro foi reportado e será resolvido brevemente.</p></div>}>
+      <AuthProvider>
+        <Router>
+          <ScrollToTop />
+          <Toaster position="top-center" richColors />
+          <div className="flex flex-col min-h-screen bg-brand-light dark:bg-slate-950 font-sans transition-colors duration-300">
+            <Routes>
+              <Route path="/admin" element={<AdminRedirect />} />
 
-            {/* Auth Callbacks - Clean layout */}
-            <Route path="/auth/callback/google" element={<Suspense fallback={<PageLoader />}><AuthCallback /></Suspense>} />
-            <Route path="/auth/callback/apple" element={<Suspense fallback={<PageLoader />}><AuthCallback /></Suspense>} />
+              {/* Auth Callbacks - Clean layout */}
+              <Route path="/auth/callback/google" element={<Suspense fallback={<PageLoader />}><AuthCallback /></Suspense>} />
+              <Route path="/auth/callback/apple" element={<Suspense fallback={<PageLoader />}><AuthCallback /></Suspense>} />
 
-            <Route path="*" element={
-              <>
-                <Navbar theme={theme} onToggleTheme={toggleTheme} />
-                <main className="flex-grow">
-                  <Suspense fallback={<PageLoader />}>
-                    <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/article/:id" element={<ArticleView />} />
-                      <Route path="/author/:name" element={<Author />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/contact" element={<Contact />} />
-                      <Route path="/educadicas" element={<Educadicas />} />
-                      <Route path="/resources" element={<Resources />} />
-                      <Route path="/biblioteca" element={<Library />} />
-                      <Route path="/biblioteca/:slug" element={<PublicationDetail />} />
-                      <Route path="/favorites" element={<Favorites />} />
-                      <Route path="/lab" element={<AIResearch />} />
-                      <Route path="/quiz" element={<QuizPage />} />
-                      <Route path="/rss" element={<RSSFeed />} />
-                      <Route path="/privacy" element={<PrivacyPolicy />} />
-                      <Route path="/terms" element={<TermsOfUse />} />
-                    </Routes>
-                  </Suspense>
-                </main>
-                <Footer />
-                <CookieConsent />
-                <SubscriptionAlert />
-                <ChatWidget />
-                <ScrollToTopButton />
-              </>
-            } />
-          </Routes>
-        </div>
-      </Router>
-    </AuthProvider>
+              <Route path="*" element={
+                <>
+                  <Navbar theme={theme} onToggleTheme={toggleTheme} />
+                  <main className="flex-grow">
+                    <Suspense fallback={<PageLoader />}>
+                      <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/article/:id" element={<ArticleView />} />
+                        <Route path="/author/:name" element={<Author />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="/educadicas" element={<Educadicas />} />
+                        <Route path="/resources" element={<Resources />} />
+                        <Route path="/biblioteca" element={<Library />} />
+                        <Route path="/biblioteca/:slug" element={<PublicationDetail />} />
+                        <Route path="/favorites" element={<Favorites />} />
+                        <Route path="/lab" element={<AIResearch />} />
+                        <Route path="/quiz" element={<QuizPage />} />
+                        <Route path="/rss" element={<RSSFeed />} />
+                        <Route path="/privacy" element={<PrivacyPolicy />} />
+                        <Route path="/terms" element={<TermsOfUse />} />
+                        <Route path="/guidelines/authors" element={<AuthorsGuideline />} />
+                        <Route path="/guidelines/critics" element={<ReviewersGuideline />} />
+                        <Route path="/guidelines/editors" element={<EditorsGuideline />} />
+                        <Route path="/guidelines/librarians" element={<LibrariansGuideline />} />
+                      </Routes>
+                    </Suspense>
+                  </main>
+                  <Footer />
+                  <CookieConsent />
+                  <SubscriptionAlert />
+                  <ChatWidget />
+                  <ScrollToTopButton />
+                </>
+              } />
+            </Routes>
+          </div>
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 
-export default App;
+export default withProfiler(App);

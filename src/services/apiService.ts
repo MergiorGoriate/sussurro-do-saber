@@ -1,7 +1,7 @@
 
 import { Article, Footnote } from "../types";
 
-export const API_BASE_URL = 'http://localhost:8000/api';
+export const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
 export const apiService = {
   /**
@@ -12,17 +12,72 @@ export const apiService = {
     if (query) params.append('search', query);
     if (category) params.append('category', category);
 
-    const response = await fetch(`${API_BASE_URL}/articles/?${params.toString()}&_t=${Date.now()}`);
+    const token = localStorage.getItem('accessToken');
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let response = await fetch(`${API_BASE_URL}/articles/?${params.toString()}&_t=${Date.now()}`, { headers });
+
+    // Fallback: If 401 (Unauthorized) on a public list, retry without token
+    if (response.status === 401 && token) {
+      console.warn("Invalid token detected, retrying without authentication...");
+      response = await fetch(`${API_BASE_URL}/articles/?${params.toString()}&_t=${Date.now()}`);
+    }
+
     if (!response.ok) throw new Error('Failed to fetch articles');
     const data = await response.json();
     return Array.isArray(data) ? data : data.results || [];
   },
 
   /**
+   * Confirma uma visualização real (vinda do hook de engajamento).
+   */
+  async confirmView(articleId: number | string, sessionId: string): Promise<boolean> {
+    const token = localStorage.getItem('accessToken');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/analytics/metrics/view/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          article_id: articleId,
+          event: "view_confirmed",
+          session_id: sessionId
+        })
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      return data.recorded;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  /**
+   * Busca o ranking de artigos trending.
+   */
+  async fetchTrending(range: 'today' | 'week' | 'month' = 'today', limit: number = 10): Promise<Article[]> {
+    const response = await fetch(`${API_BASE_URL}/analytics/articles/trending/?range=${range}&limit=${limit}`);
+    if (!response.ok) return [];
+    return response.json();
+  },
+
+  /**
    * Busca artigos de um autor específico pelo username.
    */
   async getArticlesByAuthor(username: string): Promise<Article[]> {
-    const response = await fetch(`${API_BASE_URL}/articles/?author__username=${encodeURIComponent(username)}&_t=${Date.now()}`);
+    const token = localStorage.getItem('accessToken');
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let response = await fetch(`${API_BASE_URL}/articles/?author__username=${encodeURIComponent(username)}&_t=${Date.now()}`, { headers });
+
+    if (response.status === 401 && token) {
+      response = await fetch(`${API_BASE_URL}/articles/?author__username=${encodeURIComponent(username)}&_t=${Date.now()}`);
+    }
+
     if (!response.ok) throw new Error('Failed to fetch author articles');
     const data = await response.json();
     return Array.isArray(data) ? data : data.results || [];
@@ -34,7 +89,16 @@ export const apiService = {
    * Busca um artigo detalhado por seu Slug.
    */
   async getArticleById(slug: string): Promise<Article> {
-    const response = await fetch(`${API_BASE_URL}/articles/${slug}/`);
+    const token = localStorage.getItem('accessToken');
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let response = await fetch(`${API_BASE_URL}/articles/${slug}/`, { headers });
+
+    if (response.status === 401 && token) {
+      response = await fetch(`${API_BASE_URL}/articles/${slug}/`);
+    }
+
     if (!response.ok) throw new Error('Article not found');
     return response.json();
   },

@@ -5,18 +5,40 @@ import { Link } from 'react-router-dom';
 import {
   Clock, LockOpen, Quote, Share2, Check, BarChart3,
   ChevronRight, X, Copy, MessageCircle, Facebook,
-  Twitter, Send, Linkedin
+  Twitter, Send, Linkedin, Bookmark
 } from 'lucide-react';
 import { Article } from '../../types';
+import { storageService } from '../../services/storageService';
+import { useTranslation } from 'react-i18next';
 
 interface ArticleCardProps {
   article: Article;
 }
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
+  const { t } = useTranslation();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+
+  React.useEffect(() => {
+    const checkStatus = () => {
+      const interactions = storageService.getUserInteractions();
+      const bookmarked = interactions.bookmarkedArticles.includes(String(article.id));
+      setIsBookmarked(bookmarked);
+    };
+    checkStatus();
+    window.addEventListener('storage-update', checkStatus);
+    return () => window.removeEventListener('storage-update', checkStatus);
+  }, [article.id]);
+
+  const handleToggleBookmark = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const result = await storageService.toggleBookmark(String(article.id));
+    setIsBookmarked(result);
+  };
 
   // Fallback image in case the specific Unsplash URL fails
   const fallbackImage = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=60&w=800&auto=format&fit=crop";
@@ -127,6 +149,13 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
               </div>
 
               <div className="flex items-center gap-1">
+                <button
+                  onClick={handleToggleBookmark}
+                  className={`p-1.5 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 ${isBookmarked ? 'text-amber-500' : 'text-slate-400 hover:text-amber-500'}`}
+                  title={isBookmarked ? t('article.remove_bookmark') : t('article.add_bookmark')}
+                >
+                  <Bookmark size={16} fill={isBookmarked ? 'currentColor' : 'none'} />
+                </button>
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsShareModalOpen(true); }}
                   className="p-1.5 text-slate-400 hover:text-brand-blue transition-colors rounded-full hover:bg-blue-50 dark:hover:bg-slate-800"

@@ -29,17 +29,20 @@ sussurros-do-saber/
 ├── infrastructure/  # Nginx, Docker, Deploy configs
 └── docs/            # Documentação técnica
 ```
+
 ## 🧠 Arquitectura Tecnológica
 
 A plataforma foi concebida com uma arquitectura moderna, escalável e preparada para milhares de utilizadores.
 
 ### 🔹 Frontend
+
 - React + Next.js
 - TypeScript
 - SSR/SSG para performance e SEO académico
 - Interface optimizada para leitura científica
 
 ### 🔹 Backend (API Principal)
+
 - Django (Python)
 - Django REST Framework
 - Autenticação segura
@@ -47,6 +50,7 @@ A plataforma foi concebida com uma arquitectura moderna, escalável e preparada 
 - Integração com Redis e Celery
 
 ### 🔹 CMS (Gestão Editorial)
+
 - Flask (100% customizado)
 - Painel administrativo próprio
 - Gestão de:
@@ -58,6 +62,7 @@ A plataforma foi concebida com uma arquitectura moderna, escalável e preparada 
 - Autores
 
 ### 🔹 Infraestrutura
+
 - Hosting: Hetzner VPS
 - Armazenamento: Cloudflare R2 (object storage)
 - Cache & Real-time: Redis

@@ -30,7 +30,7 @@ export const useAuthorRealtime = (username: string, initialStats: AuthorRealtime
         eventSourceRef.current = eventSource;
 
         eventSource.onopen = () => {
-            // console.log('Author SSE Connected');
+
         };
 
         eventSource.addEventListener('update', (event) => {

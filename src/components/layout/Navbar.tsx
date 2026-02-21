@@ -210,7 +210,11 @@ const Navbar: React.FC<NavbarProps> = ({ theme, onToggleTheme }) => {
       <div className="hidden md:block bg-brand-blue dark:bg-slate-900 text-white z-40 shadow-md transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center overflow-visible">
           <div className="flex items-center h-full min-w-0">
-            <button className="flex items-center gap-2 text-sm font-bold px-4 lg:px-5 h-full bg-brand-blue dark:bg-slate-900 hover:bg-[#003da0] dark:hover:bg-slate-800 transition-colors group relative focus:outline-none shrink-0">
+            <button
+              className="flex items-center gap-2 text-sm font-bold px-4 lg:px-5 h-full bg-brand-blue dark:bg-slate-900 hover:bg-[#003da0] dark:hover:bg-slate-800 transition-colors group relative focus:outline-none shrink-0"
+              aria-label={t('accessibility.open_subjects')}
+              title={t('accessibility.open_subjects')}
+            >
               <span>{t('nav.subjects')}</span>
               <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180 duration-300" />
               <div className="absolute top-full left-0 w-[600px] bg-white dark:bg-slate-900 shadow-2xl rounded-b-xl py-4 hidden group-hover:block z-50 text-gray-800 dark:text-slate-200 border-t-4 border-brand-dark ring-1 ring-black/5">

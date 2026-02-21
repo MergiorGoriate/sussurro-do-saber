@@ -22,6 +22,6 @@ i18n
         }
     });
 
-console.log('I18n initialized with:', { pt: ptTranslations, en: enTranslations });
+
 
 export default i18n;

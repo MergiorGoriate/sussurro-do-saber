@@ -10,8 +10,8 @@ const Contact: React.FC = () => {
     setStatus('success');
     // Simulate API call
     setTimeout(() => {
-        setFormData({ name: '', email: '', message: '' });
-        setStatus('idle');
+      setFormData({ name: '', email: '', message: '' });
+      setStatus('idle');
     }, 5000);
   };
 
@@ -30,17 +30,17 @@ const Contact: React.FC = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Info Cards - Stacks on desktop, side-by-side on tablet, stacked on mobile */}
           <div className="lg:col-span-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 h-fit">
-             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <Mail className="w-8 h-8 text-brand-blue mb-4" />
-                <h3 className="font-bold text-gray-900 mb-2">Email</h3>
-                <p className="text-gray-600 text-sm mb-4">Para questões gerais e parcerias.</p>
-                <a href="mailto:sussurrosdosaber@gmail.com" className="text-brand-blue font-bold hover:underline">sussurrosdosaber@gmail.com</a>
-             </div>
-             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <MapPin className="w-8 h-8 text-brand-blue mb-4" />
-                <h3 className="font-bold text-gray-900 mb-2">Localização</h3>
-                <p className="text-gray-600 text-sm">Nampula, Moçambique</p>
-             </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <Mail className="w-8 h-8 text-brand-blue mb-4" />
+              <h3 className="font-bold text-gray-900 mb-2">Email</h3>
+              <p className="text-gray-600 text-sm mb-4">Para questões gerais e parcerias.</p>
+              <a href="mailto:sussurrosdosaber@gmail.com" className="text-brand-blue font-bold hover:underline">sussurrosdosaber@gmail.com</a>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <MapPin className="w-8 h-8 text-brand-blue mb-4" />
+              <h3 className="font-bold text-gray-900 mb-2">Localização</h3>
+              <p className="text-gray-600 text-sm">Nampula, Moçambique</p>
+            </div>
           </div>
 
           {/* Form */}
@@ -59,37 +59,37 @@ const Contact: React.FC = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Nome</label>
-                    <input 
+                    <input
                       required
-                      type="text" 
+                      type="text"
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue outline-none transition-all bg-white text-gray-900"
                       placeholder="Seu nome"
                       value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Email</label>
-                    <input 
+                    <input
                       required
-                      type="email" 
+                      type="email"
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue outline-none transition-all bg-white text-gray-900"
                       placeholder="seu@email.com"
                       value={formData.email}
-                      onChange={e => setFormData({...formData, email: e.target.value})}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })}
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Mensagem</label>
-                  <textarea 
+                  <textarea
                     required
                     rows={6}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue outline-none transition-all resize-none bg-white text-gray-900"
                     placeholder="Como podemos ajudar?"
                     value={formData.message}
-                    onChange={e => setFormData({...formData, message: e.target.value})}
+                    onChange={e => setFormData({ ...formData, message: e.target.value })}
                   />
                 </div>
 

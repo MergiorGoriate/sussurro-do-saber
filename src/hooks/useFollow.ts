@@ -12,7 +12,7 @@ export const useFollow = (authorUsername: string) => {
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
     useEffect(() => {
-        console.log(`[useFollow] Effect triggered. auth=${isAuthenticated}, author=${authorUsername}`);
+
         if (isAuthenticated && authorUsername) {
             checkFollowStatus();
         }
@@ -22,7 +22,7 @@ export const useFollow = (authorUsername: string) => {
             const pendingActionRaw = localStorage.getItem('pending_action');
             if (isAuthenticated && pendingActionRaw) {
                 const action = JSON.parse(pendingActionRaw);
-                console.log('[useFollow] Found pending action:', action);
+
 
                 // Validate action type, target, and expiration (1 hour)
                 const isValid =
@@ -31,12 +31,12 @@ export const useFollow = (authorUsername: string) => {
                     (Date.now() - action.timestamp) < 3600000; // 1 hour validity
 
                 if (isValid) {
-                    console.log('[useFollow] Executing valid pending action');
+
                     handleFollow(); // Execute the pending action
                     localStorage.removeItem('pending_action'); // Clear after execution
                     toast.success(t('author.auto_followed', 'Ação pendente executada: Agora segue este autor!'));
                 } else if ((Date.now() - action.timestamp) >= 3600000) {
-                    console.log('[useFollow] Pending action expired, removing');
+
                     // Clean up expired actions
                     localStorage.removeItem('pending_action');
                 }
@@ -49,12 +49,12 @@ export const useFollow = (authorUsername: string) => {
 
     const checkFollowStatus = async () => {
         if (!authorUsername) return;
-        console.log(`[useFollow] checkFollowStatus for: ${authorUsername}`);
+
         try {
             const token = localStorage.getItem('accessToken');
             if (token) {
                 const status = await apiService.checkFollowStatus(authorUsername, token);
-                console.log(`[useFollow] Follow status: ${status}`);
+
                 setIsFollowing(status);
             }
         } catch (error) {
@@ -63,7 +63,7 @@ export const useFollow = (authorUsername: string) => {
     };
 
     const handleFollow = async () => {
-        console.log(`[useFollow] handleFollow triggered for: '${authorUsername}'. Status: follows=${isFollowing}, auth=${isAuthenticated}`);
+
 
         if (!authorUsername || authorUsername === 'undefined') {
             console.error('[useFollow] ABORT: Invalid or missing authorUsername:', authorUsername);
@@ -72,7 +72,7 @@ export const useFollow = (authorUsername: string) => {
         }
 
         if (!isAuthenticated) {
-            console.log('[useFollow] User not authenticated. Storing pending action and opening AuthModal');
+
             const pendingAction = {
                 type: 'follow_author',
                 target: authorUsername,
@@ -86,16 +86,16 @@ export const useFollow = (authorUsername: string) => {
         setLoading(true);
         try {
             const token = localStorage.getItem('accessToken');
-            console.log(`[useFollow] Requesting follow status change. Token present: ${!!token}`);
+
             if (!token) throw new Error('Security token (JWT) is missing from storage');
 
             if (isFollowing) {
-                console.log(`[useFollow] Executing UNFOLLOW call for author: ${authorUsername}`);
+
                 await apiService.unfollowAuthor(authorUsername, token);
                 setIsFollowing(false);
                 toast.success(t('author.unfollowed', 'Deixou de seguir este autor'));
             } else {
-                console.log(`[useFollow] Executing FOLLOW call for author: ${authorUsername}`);
+
                 await apiService.followAuthor(authorUsername, token);
                 setIsFollowing(true);
                 toast.success(t('author.followed', 'Agora está a seguir este autor!'));

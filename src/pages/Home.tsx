@@ -3,8 +3,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { storageService } from '../services/storageService';
 import { apiService } from '../services/apiService';
-import ArticleCard from '../components/features/ArticleCard';
-import NewsletterSection from '../components/features/NewsletterSection';
 import {
   Search, Loader2, Database, Globe, TrendingUp,
   Filter, BookOpen, Dna,
@@ -12,6 +10,9 @@ import {
   Leaf, Sparkles, RefreshCw, Brain, X, Hash, Zap,
   ChevronDown
 } from 'lucide-react';
+import ArticleCard from '../components/features/ArticleCard';
+import NewsletterSection from '../components/features/NewsletterSection';
+import TrendingArticles from '../components/features/TrendingArticles';
 import { Article } from '../types';
 
 const JOURNAL_CATEGORIES = [
@@ -185,6 +186,11 @@ const Home: React.FC = () => {
           </aside>
 
           <main className="lg:col-span-7 space-y-6">
+            {/* Mobile-only Trending Section */}
+            <div className="lg:hidden">
+              <TrendingArticles />
+            </div>
+
             <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 p-2 flex items-center justify-between shadow-sm">
               <div className="flex gap-1">
                 <button onClick={() => setFeedTab('recent')} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${feedTab === 'recent' ? 'bg-brand-blue text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>{t('home.recent')}</button>
@@ -242,7 +248,8 @@ const Home: React.FC = () => {
             </div>
           </main>
 
-          <aside className="lg:col-span-3 space-y-6 hidden xl:block">
+          <aside className="lg:col-span-3 space-y-6 hidden lg:block">
+            <TrendingArticles />
             <div className="bg-gradient-to-br from-indigo-700 to-brand-blue p-8 rounded-[32px] text-white shadow-2xl relative overflow-hidden group border border-white/10">
               <Sparkles className="absolute -top-6 -right-6 w-24 h-24 text-white/10 group-hover:scale-125 transition-transform duration-700" />
               <h4 className="text-[9px] font-black uppercase tracking-[0.3em] mb-6 flex items-center gap-2 text-blue-200">

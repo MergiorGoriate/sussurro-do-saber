@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Article, Category, Comment, Footnote, Subscriber, Bookmark
+from .models import Article, Category, Comment, Footnote, Subscriber, Bookmark, UserLike
 
 from taggit.serializers import (TagListSerializerField,
                                 TaggitSerializer)
@@ -21,13 +21,16 @@ class ArticleListSerializer(TaggitSerializer, serializers.ModelSerializer):
     metrics = serializers.SerializerMethodField()
     journalMeta = serializers.SerializerMethodField()
     author_badges = serializers.SerializerMethodField()
+    is_bookmarked = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
     
     class Meta:
         model = Article
         fields = [
             'id', 'title', 'excerpt', 'author', 'author_username', 'author_badges', 'authorAvatarUrl', 
             'date', 'category', 'imageUrl', 'readTime', 'status',
-            'likes', 'views', 'tags', 'metrics', 'journalMeta', 'slug'
+            'likes', 'views', 'tags', 'metrics', 'journalMeta', 'slug',
+            'is_bookmarked', 'is_liked'
         ]
 
     def get_category(self, obj):
@@ -73,6 +76,18 @@ class ArticleListSerializer(TaggitSerializer, serializers.ModelSerializer):
             'acceptedDate': obj.published_at.strftime("%d %b %Y") if obj.published_at else ""
         }
 
+    def get_is_bookmarked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return Bookmark.objects.filter(user=request.user, article=obj).exists()
+        return False
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return UserLike.objects.filter(user=request.user, article=obj).exists()
+        return False
+
 class ArticleDetailSerializer(ArticleListSerializer):
     author_username = serializers.CharField(source='author.username', read_only=True)
     authorAvatarUrl = serializers.SerializerMethodField()
@@ -81,16 +96,32 @@ class ArticleDetailSerializer(ArticleListSerializer):
     metrics = serializers.SerializerMethodField()
     journalMeta = serializers.SerializerMethodField()
     date = serializers.DateTimeField(source='published_at', format="%d %b %Y", read_only=True)
+    is_bookmarked = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
 
     class Meta:
         model = Article
         fields = [
             'id', 'title', 'excerpt', 'content', 'author', 'author_username', 'authorAvatarUrl', 
             'date', 'category', 'imageUrl', 'readTime', 'status', 'tags',
-            'likes', 'views', 'metrics', 'journalMeta', 'slug', 'doi', 'issn', 'volume', 'issue'
+            'likes', 'views', 'metrics', 'journalMeta', 'slug', 'doi', 'issn', 'volume', 'issue',
+            'is_bookmarked', 'is_liked'
         ]
 
 
+
+
+    def get_is_bookmarked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return Bookmark.objects.filter(user=request.user, article=obj).exists()
+        return False
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return UserLike.objects.filter(user=request.user, article=obj).exists()
+        return False
 
 
 class CommentSerializer(serializers.ModelSerializer):

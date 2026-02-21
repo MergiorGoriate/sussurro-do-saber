@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 import environ
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
 from pathlib import Path
 from django.templatetags.static import static
 from django.utils.translation import gettext_lazy as _
@@ -28,6 +32,21 @@ env = environ.Env(
 # Read .env file
 environ.Env.read_env(BASE_DIR / '.env')
 
+# Sentry Configuration
+SENTRY_DSN = env('SENTRY_DSN', default=None)
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(),
+            CeleryIntegration(),
+            RedisIntegration(),
+        ],
+        traces_sample_rate=1.0, # Adjust in production
+        send_default_pii=True,
+        environment=env('ENVIRONMENT', default='development'),
+    )
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
@@ -38,6 +57,8 @@ SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+
+GEMINI_API_KEY = env('GEMINI_API_KEY', default=None)
 
 
 # Application definition
@@ -73,10 +94,10 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # CORS middleware first
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware", # WhiteNoise before SessionMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",  # CORS middleware
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -197,6 +218,15 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '10000/day',
+        'user': '50000/day',
+        'metrics_ingestion': '100/minute',
+    }
 }
 
 from datetime import timedelta
@@ -284,12 +314,23 @@ APPLE_CLIENT_ID = env('APPLE_CLIENT_ID', default='')
 # Celery Configuration
 REDIS_URL = env('REDIS_URL', default=None)
 
-if DEBUG and not REDIS_URL:
-    # Use Eager mode for local dev without Redis
-    CELERY_BROKER_URL = 'memory://'
-    CELERY_RESULT_BACKEND = None
-    CELERY_TASK_ALWAYS_EAGER = True
-    CELERY_TASK_EAGER_PROPAGATES = True
+# Local development fallback for Redis
+if DEBUG:
+    import redis
+    try:
+        if REDIS_URL:
+            r = redis.from_url(REDIS_URL)
+            r.ping()
+            CELERY_BROKER_URL = REDIS_URL
+            CELERY_RESULT_BACKEND = REDIS_URL
+        else:
+            raise redis.ConnectionError
+    except (redis.ConnectionError, ImportError):
+        # Use Eager mode for local dev without Redis reachable
+        CELERY_BROKER_URL = 'memory://'
+        CELERY_RESULT_BACKEND = None
+        CELERY_TASK_ALWAYS_EAGER = True
+        CELERY_TASK_EAGER_PROPAGATES = True
 else:
     CELERY_BROKER_URL = REDIS_URL or 'redis://localhost:6379/1'
     CELERY_RESULT_BACKEND = REDIS_URL or 'redis://localhost:6379/1'

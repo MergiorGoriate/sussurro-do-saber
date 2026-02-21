@@ -50,7 +50,7 @@ const Footer: React.FC = () => {
   return (
     <footer className="bg-slate-900 dark:bg-slate-950 text-white mt-auto py-20 px-6 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-16">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-12 md:gap-16">
 
           <div className="space-y-6">
             <Link to="/" className="flex items-center gap-3 group">
@@ -82,6 +82,16 @@ const Footer: React.FC = () => {
               <li><Link to="/privacy" className="hover:text-brand-blue transition-colors">{t('footer.privacy')}</Link></li>
               <li><Link to="/terms" className="hover:text-brand-blue transition-colors">{t('footer.terms')}</Link></li>
               <li><Link to="/admin" className="hover:text-brand-blue transition-colors">{t('footer.admin')}</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6">{t('footer.guidelines')}</h3>
+            <ul className="space-y-3 text-sm text-slate-400">
+              <li><Link to="/guidelines/authors" className="hover:text-brand-blue transition-colors">{t('footer.for_authors')}</Link></li>
+              <li><Link to="/guidelines/critics" className="hover:text-brand-blue transition-colors">{t('footer.for_critics')}</Link></li>
+              <li><Link to="/guidelines/editors" className="hover:text-brand-blue transition-colors">{t('footer.for_editors')}</Link></li>
+              <li><Link to="/guidelines/librarians" className="hover:text-brand-blue transition-colors">{t('footer.for_librarians')}</Link></li>
             </ul>
           </div>
 

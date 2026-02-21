@@ -22,7 +22,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess, inten
     const { login } = useAuth(); // Need to import this hook
 
     if (!isOpen) return null;
-    console.log('[AuthModal] Open with intent:', intentText);
+
 
     const handleMagicLink = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,11 +31,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess, inten
         setDebugToken(null);
 
         try {
-            console.log('[AuthModal] Requesting magic link for:', email);
+
             const data = await authService.requestMagicLink(email);
             setStatus('sent');
             if (data.debug_token) {
-                console.log('[AuthModal] Debug token received');
+
                 setDebugToken(data.debug_token);
             }
         } catch (err) {
@@ -47,10 +47,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess, inten
 
     const handleDebugVerify = async () => {
         if (!debugToken) return;
-        console.log('[AuthModal] Verifying debug token');
+
         try {
             const data = await authService.verifyMagicLink(debugToken);
-            console.log('[AuthModal] Debug verification success');
+
             login(data.access, data.refresh, { id: data.user_id, username: data.username, email });
             onSuccess();
             onClose();
@@ -64,14 +64,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess, inten
     const [loadingApple, setLoadingApple] = useState(false);
 
     const handleSocialLogin = async (provider: 'google' | 'apple') => {
-        console.log(`[AuthModal] Social login triggered: ${provider}`);
+
         setErrorMsg('');
         if (provider === 'google') setLoadingGoogle(true);
         else setLoadingApple(true);
 
         try {
             const url = await authService.getSocialLoginUrl(provider);
-            console.log(`[AuthModal] Redirecting to ${provider}: ${url}`);
+
             window.location.href = url;
         } catch (err) {
             console.error(`[AuthModal] ${provider} login error:`, err);

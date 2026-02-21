@@ -63,6 +63,8 @@ export interface Article {
     keywords: string[];
   };
   slug: string;
+  is_bookmarked?: boolean;
+  is_liked?: boolean;
 }
 
 // BIG DATA TYPES

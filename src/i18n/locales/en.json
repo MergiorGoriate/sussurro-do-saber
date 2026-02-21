@@ -25,7 +25,12 @@
         "rights": "All rights reserved.",
         "privacy": "Privacy",
         "terms": "Terms",
-        "admin": "Administration"
+        "admin": "Administration",
+        "guidelines": "Guidelines",
+        "for_authors": "For authors",
+        "for_critics": "For Critics",
+        "for_editors": "For Editors",
+        "for_librarians": "For librarians"
     },
     "home": {
         "hero_title": "Sussurros do Saber",
@@ -39,6 +44,8 @@
         "highlights": "Highlights",
         "articles_count": "Articles",
         "load_more": "Discover More Articles",
+        "trending": "Trending",
+        "most_read": "Most read articles",
         "no_articles": "No manuscripts available",
         "random_fact_source": "Source: Sussurros Repository"
     },
@@ -87,6 +94,8 @@
         "reference_text": "Reference Text",
         "note_content": "Note Content",
         "submit_review": "Submit for Review",
-        "academic_only": "Space reserved for constructive contributions."
+        "academic_only": "Space reserved for constructive contributions.",
+        "add_bookmark": "Save to favorites",
+        "remove_bookmark": "Remove from favorites"
     }
 }

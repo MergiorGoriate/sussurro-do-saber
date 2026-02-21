@@ -1,50 +1,64 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from django.http import StreamingHttpResponse, HttpResponse
-from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404
+from django.core.cache import cache
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from apps.articles.models import Article
+from apps.articles.serializers import ArticleListSerializer
 from .services import AnalyticsService
-import time
-import json
+from .models import ArticleMetricDaily, ArticleMetricWeekly, ArticleMetricMonthly
 import logging
 
 logger = logging.getLogger(__name__)
 
-class RecordView(APIView):
+class ConfirmViewAPI(APIView):
+    """
+    Ingestão de métricas de visualização confirmada.
+    Requer validação de anti-bot e deduplicação no Redis.
+    """
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'metrics_ingestion'
 
-    def post(self, request, article_id):
-        # Fingerprinting strategy:
-        # 1. Authenticated User ID
-        # 2. Session ID (if available)
-        # 3. IP Address + User Agent Hash (simple fallback)
+    def post(self, request):
+        article_id = request.data.get('article_id')
+        event = request.data.get('event')
         
-        fingerprint = None
+        # Structured Logging Data
+        log_data = {
+            'article_id': article_id,
+            'event': event,
+            'user_id': request.user.id if request.user.is_authenticated else None,
+            'remote_addr': self.get_client_ip(request)
+        }
+
+        if not article_id or event != 'view_confirmed':
+            logger.warning("Invalid metrics payload", extra=log_data)
+            return Response({"detail": "Invalid payload"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Quick validation (cacheable)
+        cache_key = f"article_exists:{article_id}"
+        is_valid = cache.get(cache_key)
+        
+        if is_valid is None:
+            is_valid = Article.objects.filter(id=article_id, status='published').exists()
+            cache.set(cache_key, is_valid, 300) # 5 min cache
+            
+        if not is_valid:
+            return Response({"detail": "Article not found or not published"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Fingerprinting
+        ip = self.get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        session_id = request.data.get('session_id', '')
+        
         if request.user.is_authenticated:
             fingerprint = f"user:{request.user.id}"
-        elif request.session.session_key:
-             fingerprint = f"session:{request.session.session_key}"
         else:
-            # Fallback (Basic IP based)
-            ip = self.get_client_ip(request)
-            fingerprint = f"ip:{ip}"
-            
-        if not fingerprint:
-             return Response({"detail": "Unable to identify client"}, status=status.HTTP_400_BAD_REQUEST)
+            fingerprint = f"{ip}:{user_agent}:{session_id}"
 
         recorded = AnalyticsService.record_view(article_id, fingerprint)
-        
-        # Always update presence on view event
-        AnalyticsService.update_presence(article_id, fingerprint)
-        
-        # If view was valid (deduplicated), notify Author Stats Channel
-        if recorded:
-            try:
-                from apps.articles.models import Article
-                article = Article.objects.get(pk=article_id)
-                AnalyticsService.publish_author_update(article.author.username, 'view', {'delta': 1})
-            except Exception as e:
-                logger.error(f"Failed to publish author stats: {e}")
         
         return Response({"recorded": recorded}, status=status.HTTP_200_OK)
 
@@ -56,124 +70,80 @@ class RecordView(APIView):
             ip = request.META.get('REMOTE_ADDR')
         return ip
 
-class UpdatePresenceView(APIView):
+class TrendingAPI(APIView):
+    """
+    Endpoint de trending articles com cache e fallback para DB.
+    """
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request, article_id):
-        fingerprint = None
-        if request.user.is_authenticated:
-            fingerprint = f"user:{request.user.id}"
-        elif request.session.session_key:
-             fingerprint = f"session:{request.session.session_key}"
-        else:
-            ip = self.get_client_ip(request)
-            fingerprint = f"ip:{ip}"
+    @method_decorator(cache_page(30)) # 30s cache
+    def get(self, request):
+        range_type = request.query_params.get('range', 'day')
+        limit = min(int(request.query_params.get('limit', 10)), 50)
+        
+        # 1. Try Redis
+        trending_data = AnalyticsService.get_trending_ids(range_type, limit)
+        
+        if trending_data:
+            # zip IDs and scores
+            ids = [int(item[0]) for item in trending_data]
+            scores = {int(item[0]): int(item[1]) for item in trending_data}
             
-        AnalyticsService.update_presence(article_id, fingerprint)
-        return Response({"status": "active"}, status=status.HTTP_200_OK)
+            # Fetch objects preserving order
+            # Note: order_by(Field) can be used, but manual sorting is often cleaner for ZSETs
+            articles = Article.objects.filter(id__in=ids).select_related('author', 'category').prefetch_related('tags')
+            
+            # Re-sort to match ZSET order
+            sorted_articles = sorted(articles, key=lambda a: scores.get(a.id, 0), reverse=True)
+            
+            serializer = ArticleListSerializer(sorted_articles, many=True)
+            
+            # Inject score (views) into response
+            for i, item in enumerate(serializer.data):
+                item['period_views'] = scores.get(int(sorted_articles[i].id), 0)
+                
+            return Response(serializer.data)
 
-    def get_client_ip(self, request):
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+        # 2. Fallback to PostgreSQL Aggregates
+        return self.get_db_fallback(range_type, limit)
+
+    def get_db_fallback(self, range_type, limit):
+        logger.warning(f"Redis trending failed, falling back to DB for range: {range_type}")
+        
+        from django.db.models import Sum
+        
+        # Query matching table based on range
+        if range_type == 'week':
+            from datetime import datetime
+            now = datetime.now()
+            year_week = now.strftime('%YW%V')
+            metrics = ArticleMetricWeekly.objects.filter(year_week=year_week).order_by('-views')[:limit]
+        elif range_type == 'month':
+            from datetime import datetime
+            now = datetime.now()
+            year_month = now.strftime('%Y-%m')
+            metrics = ArticleMetricMonthly.objects.filter(year_month=year_month).order_by('-views')[:limit]
         else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip
+            from datetime import date
+            metrics = ArticleMetricDaily.objects.filter(day=date.today()).order_by('-views')[:limit]
 
-def stream_stats(request, article_id):
-    """
-    SSE Stream for real-time stats.
-    Uses Redis Pub/Sub to push updates to the client.
-    """
-    def event_stream():
-        # Yield initial stats
-        initial_stats = AnalyticsService.get_realtime_stats(article_id)
-        yield f"event: stats\ndata: {json.dumps(initial_stats)}\n\n"
+        ids = [m.article_id for m in metrics]
+        articles = Article.objects.filter(id__in=ids).select_related('author', 'category').prefetch_related('tags')
         
-        # Subscribe to Redis channel
-        pubsub = AnalyticsService.redis_client.pubsub()
-        channel = AnalyticsService.get_stats_channel(article_id)
-        pubsub.subscribe(channel)
+        # Preserve order
+        metric_map = {m.article_id: m.views for m in metrics}
+        sorted_articles = sorted(articles, key=lambda a: metric_map.get(a.id, 0), reverse=True)
         
-        # Heartbeat to keep connection alive
-        last_heartbeat = time.time()
-        
-        try:
-            for message in pubsub.listen():
-                now = time.time()
-                if now - last_heartbeat > 15:
-                    yield ":keep-alive\n\n"
-                    last_heartbeat = now
-                
-                if message['type'] == 'message':
-                    yield f"event: stats\ndata: {message['data']}\n\n"
-        except GeneratorExit:
-            pubsub.unsubscribe()
-        except Exception as e:
-            logger.error(f"SSE Error: {e}")
-            pass
+        serializer = ArticleListSerializer(sorted_articles, many=True)
+        for i, item in enumerate(serializer.data):
+             item['period_views'] = metric_map.get(sorted_articles[i].id, 0)
+             
+        return Response(serializer.data)
 
-    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
-    response['Cache-Control'] = 'no-cache'
-    response['X-Accel-Buffering'] = 'no' # Disable Nginx buffering
-    return response
-
-def stream_author_stats(request, username):
-    """
-    SSE Stream for real-time Author stats (Views, Followers, Karma).
-    """
-    def event_stream():
-        # Subscribe to Redis channel
-        pubsub = AnalyticsService.redis_client.pubsub()
-        channel = AnalyticsService.get_author_stats_channel(username)
-        pubsub.subscribe(channel)
-        
-        # Heartbeat
-        last_heartbeat = time.time()
-        
-        try:
-            for message in pubsub.listen():
-                now = time.time()
-                if now - last_heartbeat > 15:
-                    yield ":keep-alive\n\n"
-                    last_heartbeat = now
-                
-                if message['type'] == 'message':
-                    yield f"event: update\ndata: {message['data']}\n\n"
-        except GeneratorExit:
-            pubsub.unsubscribe()
-        except Exception as e:
-            logger.error(f"SSE Author Error: {e}")
-            pass
-
-    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
-    response['Cache-Control'] = 'no-cache'
-    response['X-Accel-Buffering'] = 'no'
-    return response
-
-# Standard GET stats fallback
-class StatsView(APIView):
+# Re-keeping legacy views for compatibility if needed (or refactoring them)
+# For now, let's keep them and we'll update urls.py to include new ones.
+class LegacyStatsView(APIView):
     permission_classes = [permissions.AllowAny]
-    
     def get(self, request, article_id):
-        # Ideally fetch from DB + Redis
-        # For MVP, we just return Redis real-time part
-        # To make it complete, we should fetch Article.views from DB and add delta
-        
-        from apps.articles.models import Article
-        from django.shortcuts import get_object_or_404
-        
-        # We don't want to query DB every polling if possible, but for fallback it's fine
-        # article = get_object_or_404(Article, pk=article_id) # Or just assume ID is valid for stats
-        # db_views = article.views
-        
-        # For optimization, we can just return the delta and reading_now
-        # The frontend usually has the static 'views' from the initial load
-        # But to be correct, the API should generally return the total.
-        
         stats = AnalyticsService.get_realtime_stats(article_id)
-        # We need the base views to be accurate? 
-        # For now, let's return what we have in Redis. 
-        # The frontend implementation plan says: views = article.views (Postgres) + delta (Redis)
-        
         return Response(stats, status=status.HTTP_200_OK)

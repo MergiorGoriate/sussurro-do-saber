@@ -14,10 +14,9 @@ from .serializers import (ArticleListSerializer,
                             AuthorFollowerSerializer,
                             BookmarkSerializer,
                             AuthorSerializer)
-from .utils import (generate_ai_insight, 
-                    generate_ai_summary, 
-                    generate_ai_glossary, 
-                    generate_ai_chat)
+from .services.search_service import SearchService
+from .services.ai_service import AIService
+from .services.recommender_service import RecommenderService
 
 class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -34,7 +33,6 @@ class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['published_at', 'views', 'likes']
     lookup_field = 'slug'
     permission_classes = [permissions.AllowAny]
-    authentication_classes = []
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -105,11 +103,6 @@ class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
     
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        # Incrementar contador de visualizações (Atomic update to avoid hangs)
-        from django.db.models import F
-        Article.objects.filter(id=instance.id).update(views=F('views') + 1)
-        
-        instance.refresh_from_db()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
     
@@ -261,24 +254,23 @@ class TagListView(APIView):
 class AIInsightView(APIView):
     def post(self, request):
         content = request.data.get('content')
-        insight = generate_ai_insight(content)
+        ai_service = AIService()
+        insight = ai_service.generate_insight(content)
         return Response({'insight': insight})
 
 class AISummaryView(APIView):
     def post(self, request):
         content = request.data.get('content')
-        summary = generate_ai_summary(content)
+        ai_service = AIService()
+        summary = ai_service.generate_summary(content)
         return Response({'summary': summary})
 
 class AIGlossaryView(APIView):
     def post(self, request):
         content = request.data.get('content')
-        terms = generate_ai_glossary(content)
+        ai_service = AIService()
+        terms = ai_service.generate_glossary(content)
         return Response(terms)
-
-from .services.search_service import SearchService
-from .services.ai_service import AIService
-from .services.recommender_service import RecommenderService
 
 class SemanticSearchView(APIView):
     permission_classes = [permissions.AllowAny]

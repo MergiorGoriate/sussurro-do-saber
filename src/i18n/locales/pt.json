@@ -25,7 +25,12 @@
         "rights": "Todos os direitos reservados.",
         "privacy": "Privacidade",
         "terms": "Termos",
-        "admin": "Administração"
+        "admin": "Administração",
+        "guidelines": "Diretrizes",
+        "for_authors": "Para autores",
+        "for_critics": "Para Críticos",
+        "for_editors": "Para Editores",
+        "for_librarians": "Para bibliotecários"
     },
     "home": {
         "hero_title": "Sussurros do Saber",
@@ -39,6 +44,8 @@
         "highlights": "Destaques",
         "articles_count": "Artigos",
         "load_more": "Descobrir Mais Artigos",
+        "trending": "Tendências",
+        "most_read": "Artigos mais lidos",
         "no_articles": "Nenhum manuscrito disponível",
         "random_fact_source": "Fonte: Repositório Sussurros"
     },
@@ -87,6 +94,8 @@
         "reference_text": "Texto de Referência",
         "note_content": "Conteúdo da Nota",
         "submit_review": "Enviar para Revisão",
-        "academic_only": "Espaço reservado para contribuições construtivas."
+        "academic_only": "Espaço reservado para contribuições construtivas.",
+        "add_bookmark": "Guardar nos favoritos",
+        "remove_bookmark": "Remover dos favoritos"
     }
 }

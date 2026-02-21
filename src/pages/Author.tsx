@@ -211,7 +211,7 @@ const Author: React.FC = () => {
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
-                      console.log('[AuthorPage] Follow button clicked');
+
                       handleFollow();
                     }}
                     className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transform transition-all duration-300 ${isFollowing ? 'bg-slate-100 dark:bg-slate-800 text-brand-blue dark:text-blue-400' : 'bg-brand-blue text-white hover:bg-brand-dark shadow-lg shadow-blue-500/10'}`}

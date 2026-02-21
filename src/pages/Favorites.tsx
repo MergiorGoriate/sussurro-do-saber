@@ -14,79 +14,82 @@ const Favorites: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadFavorites = async () => {
-      setIsLoading(true);
+    let isMounted = true;
+    let syncInProgress = false;
+
+    const loadFavorites = async (shouldSync = false) => {
+      // Only show full-page loader if we don't have articles yet
+      if (bookmarkedArticles.length === 0) {
+        setIsLoading(true);
+      }
+
       try {
         const token = localStorage.getItem('accessToken');
 
-        // 1. Authenticated: Fetch from Cloud
+        // 1. Authenticated: Fetch from Cloud and sync local interactions
         if (token) {
+          // Sync only on mount or explicit action, to avoid infinite loop with listener
+          if (shouldSync && !syncInProgress) {
+            syncInProgress = true;
+            try {
+              await storageService.syncCloudInteractions();
+            } finally {
+              syncInProgress = false;
+            }
+          }
           const cloudBookmarks = await apiService.getBookmarks(token);
-          setBookmarkedArticles(cloudBookmarks);
-          setIsLoading(false);
-          return;
-        }
+          if (isMounted) setBookmarkedArticles(cloudBookmarks);
+        } else {
+          // 2. Anonymous: Fetch from LocalStorage
+          const interactions = storageService.getUserInteractions();
+          const bookmarks = (interactions.bookmarkedArticles || [])
+            .map(String)
+            .filter(id => id && id !== 'undefined' && id !== 'null');
 
-        // 2. Anonymous: Fetch from LocalStorage
-        const interactions = storageService.getUserInteractions();
-        // Robust filtering: ensure strings, remove invalid 'null'/'undefined' strings
-        const bookmarks = (interactions.bookmarkedArticles || [])
-          .map(String)
-          .filter(id => id && id !== 'undefined' && id !== 'null');
+          const uniqueBookmarks = Array.from(new Set(bookmarks));
 
-        // Initial Set deduplication
-        const uniqueBookmarks = Array.from(new Set(bookmarks));
+          if (uniqueBookmarks.length === 0) {
+            if (isMounted) setBookmarkedArticles([]);
+          } else {
+            const promises = uniqueBookmarks.map(async (item: string) => {
+              try {
+                return await storageService.getArticleById(item);
+              } catch {
+                return null;
+              }
+            });
 
-        if (uniqueBookmarks.length === 0) {
-          setBookmarkedArticles([]);
-          setIsLoading(false);
-          return;
-        }
+            const results = await Promise.all(promises);
+            const validArticles = results.filter((a): a is Article => !!a);
 
-        // Fetch all candidates parallelly
-        const promises = uniqueBookmarks.map(async (item: string) => {
-          try {
-            // Try fetching by the stored item (Slug or ID)
-            const art = await storageService.getArticleById(item);
-            return art;
-          } catch (error) {
-            // Silent catch - if one fails, we just don't show it
-            return null;
+            const uniqueArticlesMap = new Map<string, Article>();
+            validArticles.forEach(article => {
+              if (article && article.id) {
+                uniqueArticlesMap.set(String(article.id), article);
+              }
+            });
+
+            if (isMounted) setBookmarkedArticles(Array.from(uniqueArticlesMap.values()));
           }
-        });
-
-        const results = await Promise.all(promises);
-
-        // Filter out nulls
-        const validArticles = results.filter((a): a is Article => !!a);
-
-        // Advanced Deduplication by Article ID
-        // This handles cases where user bookmarked both "123" and "my-slug"
-        // which point to the same article.
-        const uniqueArticlesMap = new Map<string, Article>();
-
-        validArticles.forEach(article => {
-          if (article && article.id) {
-            // Use ID as the unique key
-            uniqueArticlesMap.set(String(article.id), article);
-          }
-        });
-
-        // Convert Map values back to array
-        setBookmarkedArticles(Array.from(uniqueArticlesMap.values()));
-
+        }
       } catch (error) {
         console.error("Erro ao carregar favoritos:", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
-    loadFavorites();
+    // Initial load WITH sync
+    loadFavorites(true);
 
-    // Ouvir mudanças no storage (caso o utilizador remova dos favoritos em outra aba)
-    window.addEventListener('storage-update', loadFavorites);
-    return () => window.removeEventListener('storage-update', loadFavorites);
+    // Listener for manual updates (without re-triggering cloud sync)
+    const handleUpdate = () => loadFavorites(false);
+    window.addEventListener('storage-update', handleUpdate);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage-update', handleUpdate);
+    };
   }, []);
 
   if (isLoading) {
