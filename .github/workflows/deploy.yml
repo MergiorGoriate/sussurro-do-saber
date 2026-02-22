@@ -23,6 +23,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Django Checks
+        env:
+          SECRET_KEY: "test-key-for-cicd"
+          DEBUG: "True"
         run: |
           cd backend_django
           python manage.py check
