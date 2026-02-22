@@ -40,3 +40,10 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Platform Secrets and Keys
+hetzner_key
+hetzner_key.pub
+*.ps1
+sussurros-manage.sh
+infrastructure/k8s/
