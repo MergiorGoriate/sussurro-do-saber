@@ -57,8 +57,8 @@ jobs:
 
             # Using Docker Compose for Deployment
             cd backend_django
-            docker-compose -f docker-compose.prod.yml up --build -d
+            docker compose -f docker-compose.prod.yml up --build -d
 
             # Run Migrations and Collect Static
-            docker-compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
-            docker-compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput
