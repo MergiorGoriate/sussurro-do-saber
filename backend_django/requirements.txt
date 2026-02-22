@@ -21,3 +21,4 @@ django-unfold
 django-simple-history
 djangorestframework-simplejwt
 sentry-sdk
+Pillow
